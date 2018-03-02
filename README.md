@@ -14,3 +14,7 @@ Helpful links:
 +https://www.crystalfontz.com/product/cfal9664bfb2-graphic-96x64-oled-rgb?kw=&origin=pla&gclid=Cj0KCQiAieTUBRCaARIsAHeLDCTMpSWEkBIuy-yXdANbvPykkWKVy4LIp63WGejUZBG-O9HH9lcfc2EaAu2eEALw_wcB
 
 +https://www.neoplc.org/shop/display-oled-64-x-48
+
++ Actually writing an emulator: https://www.youtube.com/watch?v=y71lli8MS8s&feature=youtu.be
+
++ the code from that: https://bisqwit.iki.fi/jutut/kuvat/programming_examples/nesemu1/
