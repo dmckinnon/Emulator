@@ -18,3 +18,7 @@ Helpful links:
 + Actually writing an emulator: https://www.youtube.com/watch?v=y71lli8MS8s&feature=youtu.be
 
 + the code from that: https://bisqwit.iki.fi/jutut/kuvat/programming_examples/nesemu1/
+
++ Another emu: https://medium.com/@fogleman/i-made-an-nes-emulator-here-s-what-i-learned-about-the-original-nintendo-2e078c9b28fe
+
++ even another emu, WITH SOURCE CODE: https://github.com/amhndu/SimpleNES
