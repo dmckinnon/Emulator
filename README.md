@@ -19,6 +19,9 @@ Helpful links:
 
 + the code from that: https://bisqwit.iki.fi/jutut/kuvat/programming_examples/nesemu1/
 
-+ Another emu: https://medium.com/@fogleman/i-made-an-nes-emulator-here-s-what-i-learned-about-the-original-nintendo-2e078c9b28fe
++ Another emu: https://medium.com/@fogleman/i-made-an-nes-emulator-here-s-what-i-learned-about-the-original-nintendo-2e078c9b28fe - It is worth mentioning that this links CPU reference for the 6052, and has a vast store of technical details:
++ http://nesdev.com/NESDoc.pdf/
++ http://wiki.nesdev.com/w/index.php/NES_reference_guide
++ http://www.obelisk.demon.co.uk/6502/
 
 + even another emu, WITH SOURCE CODE: https://github.com/amhndu/SimpleNES
