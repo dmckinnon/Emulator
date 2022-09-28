@@ -35,13 +35,15 @@ int main(int argc, char* argv[])
     auto parameters = ParseArgs(argc, argv);
 
     // load rom from file to byte buffer
-    Rom rom;
+    std::shared_ptr<Rom> rom = make_shared<Rom>();
     if (!LoadRomFromFile(parameters.romFilename, rom))
     {
         cerr << "Could not load ROM from " << parameters.romFilename << std::endl;
     }
 
     // go into ROM and start running instructions
+
+    std::cout << "Size of ROM: " << rom->size << std::endl;
 
     // get GUI?
 

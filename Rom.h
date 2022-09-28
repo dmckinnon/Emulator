@@ -1,6 +1,8 @@
 #include <string>
+#include <memory>
 
-#define MAX_ROM_SIZE_BYTES 1024
+// 8 Mb
+#define MAX_ROM_SIZE_BYTES (8*1024*1024)
 
 typedef unsigned char byte;
 
@@ -10,4 +12,4 @@ struct Rom
     unsigned int size;
 };
 
-bool LoadRomFromFile(std::string filename, Rom& rom);
+bool LoadRomFromFile(std::string filename, std::shared_ptr<Rom> rom);
