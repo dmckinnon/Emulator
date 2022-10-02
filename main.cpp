@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string.h>
 
-#include "Rom.h"
+#include "Gameboy.h"
 
 using namespace std;
 
@@ -44,6 +44,10 @@ int main(int argc, char* argv[])
     // go into ROM and start running instructions
 
     std::cout << "Size of ROM: " << rom->size << std::endl;
+
+    Gameboy g = Gameboy(rom);
+
+    g.Run();
 
     // get GUI?
 

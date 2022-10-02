@@ -1,0 +1,48 @@
+#include "Rom.h"
+#include <cstdint>
+
+class CPU
+{
+public:
+    CPU();
+    ~CPU();
+
+    void ExecuteCode(std::shared_ptr<Rom> rom);
+
+    void Execute();
+
+private:
+    enum SixteenBitRegisters
+    {
+        AF = 0,
+        BC,
+        DE,
+        HL,
+        SP,
+        PC
+    };
+
+    enum EightBitRegisters
+    {
+        A = 0,
+        F,
+        B,
+        C,
+        D,
+        E,
+        H,
+        L,
+        S,
+        P,
+        Pr,
+        Co,
+    };
+
+    union Registers
+    {
+        std::uint16_t shorts[6];
+        std::uint8_t bytes[12];
+    };
+
+    Registers registers;
+};
