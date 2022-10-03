@@ -45,4 +45,8 @@ private:
     };
 
     Registers registers;
+
+    // The cycle counter works in M-cycles, not # of clock ticks
+    // Each instruction is a multiple of 4 clock ticks == 1 m-cycle. 
+    std::uint64_t mCycles;
 };
