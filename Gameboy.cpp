@@ -30,7 +30,11 @@ bool Gameboy::Run()
     }
 
     // Create the display thread and CPU thread
-    auto cpuThread = std::thread([this](){cpu.ExecuteCode(rom);});
+    //auto cpuThread = std::thread([this](){cpu.ExecuteCode(rom);});
+
+    cpu.ExecuteCode(rom);
+
+    //cpuThread.join();
 
     return true;
 }
