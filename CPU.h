@@ -44,6 +44,12 @@ private:
         std::uint8_t bytes[12];
     };
 
+    // Register flags
+    #define ZeroFlag      0x80
+    #define AddSubFlag    0x40
+    #define HalfCarryFlag 0x20
+    #define CarryFlag     0x10
+
     Registers registers;
 
     // The cycle counter works in M-cycles, not # of clock ticks

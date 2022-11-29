@@ -55,6 +55,83 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
                 
             }
 
+            // 16 bit arithmetic
+            case INC_BC:
+            {
+                registers.shorts[BC] ++;
+                break;
+            }
+            case INC_DE:
+            {
+                registers.shorts[DE] ++;
+                break;
+            }
+            case INC_HL:
+            {
+                registers.shorts[HL] ++;
+                break;
+            }
+            case INC_SP:
+            {
+                registers.shorts[SP] ++;
+                break;
+            }
+
+            case DEC_BC:
+            {
+                registers.shorts[BC] --;
+                break;
+            }
+            case DEC_DE:
+            {
+                registers.shorts[DE] --;
+                break;
+            }
+            case DEC_HL:
+            {
+                registers.shorts[HL] --;
+                break;
+            }
+            case DEC_SP:
+            {
+                registers.shorts[SP] --;
+                break;
+            }
+
+            case ADD_HL_BC:
+            {
+                registers.shorts[HL] += registers.shorts[BC];
+                // Set flags H, C, reset N
+                registers.bytes[F] ^= AddSubFlag;
+                // how to read half carry and carry from OS?
+                if ()
+                {
+
+
+                }
+                break;
+            }
+            case DEC_DE:
+            {
+                registers.shorts[DE] --;
+                // TODO set flags
+                break;
+            }
+            case DEC_HL:
+            {
+                registers.shorts[HL] --;
+                // TODO set flags
+                break;
+            }
+            case DEC_SP:
+            {
+                registers.shorts[SP] --;
+                // TODO set flags
+                break;
+            }
+
+
+
             // Jumps / calls
             default:
                 std::cout << "Bad opcode!" << std::endl;
