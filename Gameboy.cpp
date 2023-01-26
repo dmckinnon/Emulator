@@ -11,11 +11,16 @@ Gameboy::Gameboy(std::shared_ptr<Rom> rom) :
     memset(sram, 0, sizeof(GAMEBOY_SRAM));
     memset(vram, 0, sizeof(GAMEBOY_VRAM));
 
+    cpu = CPU(sram, vram);
+
     rom = nullptr;
 }
 
 Gameboy::~Gameboy()
 {
+    // destroy the CPU first as it has pointers to memory
+    cpu.~CPU();
+
     // clean up
     delete sram;
     delete vram;

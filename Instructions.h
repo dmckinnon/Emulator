@@ -47,8 +47,8 @@
 #define LOAD_DE_A      0x12
 #define LOAD_A_BC      0x0A
 #define LOAD_A_DE      0x1A
-#define LOAD_C_A       0xE2
-#define LOAD_A_C       0xF2
+#define LOAD_Cv_A      0xE2
+#define LOAD_A_Cv      0xF2
 #define LOAD_a16_A     0xEA
 #define LOAD_A_a16     0xFA
 #define LOAD_A_HLplus  0x2A
@@ -157,14 +157,17 @@
 #define LOAD_SP_HL    0xF9
 
 // 8 bit arithmetic / logic
+#define SCF        0x37
+#define DAA        0x27
+
 #define INC_A      0x3C
 #define INC_B      0x04
 #define INC_C      0x0C
 #define INC_D      0x14
 #define INC_E      0x1C
 #define INC_L      0x2C
-#define INC_H      0x34
-#define INC_HL     0x04
+#define INC_H      0x24
+#define INC_HL_v   0x34
 
 #define DEC_A      0x3D
 #define DEC_B      0x05
@@ -173,7 +176,7 @@
 #define DEC_E      0x1D
 #define DEC_L      0x2D
 #define DEC_H      0x25
-#define DEC_HL     0x35
+#define DEC_HL_v   0x35
 
 #define ADD_A_A    0x87
 #define ADD_A_B    0x80
@@ -185,15 +188,15 @@
 #define ADD_A_HL   0x86
 #define ADD_A_d8   0xC6
 
-#define ADC_A_A    0x8F
-#define ADC_A_B    0x88
-#define ADC_A_C    0x89
-#define ADC_A_D    0x8A
-#define ADC_A_E    0x8B
-#define ADC_A_H    0x8C
-#define ADC_A_L    0x8D
-#define ADC_A_HL   0x8E
-#define ADC_A_d8   0xCE
+#define ADC_A      0x8F
+#define ADC_B      0x88
+#define ADC_C      0x89
+#define ADC_D      0x8A
+#define ADC_E      0x8B
+#define ADC_H      0x8C
+#define ADC_L      0x8D
+#define ADC_HL     0x8E
+#define ADC_d8     0xCE
 
 #define SUB_A     0x97
 #define SUB_B     0x90
@@ -265,10 +268,10 @@
 #define INC_HL      0x23
 #define INC_SP      0x33
 
-#define DEC_BC      0xB3
-#define DEC_DE      0xB3
-#define DEC_HL      0xB3
-#define DEC_SP      0xB3
+#define DEC_BC      0x0B
+#define DEC_DE      0x1B
+#define DEC_HL      0x2B
+#define DEC_SP      0x3B
 
 #define ADD_HL_BC   0x09
 #define ADD_HL_DE   0x19

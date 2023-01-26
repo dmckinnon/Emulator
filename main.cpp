@@ -7,7 +7,8 @@ using namespace std;
 
 struct Parameters
 {
-    string romFilename = "";
+    // default to make things easier for me
+    string romFilename = "/home/dmckinnon/Emulator/math.gb";
 
 };
 
@@ -33,6 +34,26 @@ Parameters ParseArgs(int argc, char* argv[])
 int main(int argc, char* argv[])
 {
     auto parameters = ParseArgs(argc, argv);
+
+    // Tests:
+    // load 255 into register A and B
+    // add A and B
+    // check result
+    // PASSED
+    //
+    // load two numbers into registers
+    // write these to memory at 0 and 1
+    // read these back into registers
+    // PASSED
+    //
+    // load an address into H and L
+    // load a value into memory at HL
+    // read value from memory at HL
+    //
+    // Load a value into memory at 0x02
+    // and add it to a value loaded into A
+    //
+    // Test vram
 
     // load rom from file to byte buffer
     std::shared_ptr<Rom> rom = make_shared<Rom>();

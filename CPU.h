@@ -5,6 +5,7 @@ class CPU
 {
 public:
     CPU();
+    CPU(byte* sram, byte* vram);
     ~CPU();
 
     void ExecuteCode(std::shared_ptr<Rom> rom);
@@ -55,4 +56,19 @@ private:
     // The cycle counter works in M-cycles, not # of clock ticks
     // Each instruction is a multiple of 4 clock ticks == 1 m-cycle. 
     std::uint64_t mCycles;
+
+    byte* sram;
+    // does vram need an offset?
+    byte* vram;
+
+    inline void Add8(byte A, byte B, byte& C);
+    inline void Sub8(byte A, byte B, byte& C);
+    inline void AddC8(byte A, byte B, byte& C);
+    inline void SubC8(byte A, byte B, byte& C);
+    inline void And8(byte A, byte B, byte& C);
+    inline void Or8(byte A, byte B, byte& C);
+    inline void Xor8(byte A, byte B, byte& C);
+    inline void Cp8(byte A, byte B);
+    inline void Inc8(byte& A);
+    inline void Dec8(byte& A);
 };

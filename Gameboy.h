@@ -27,6 +27,7 @@ private:
     int clockSpeed = GAMEBOY_CLOCK_HZ;
 
     // some memory pool?
+    // define this in some header so we have offset?
     byte* sram;
     byte* vram;
 
