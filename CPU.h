@@ -1,11 +1,12 @@
 #include "Rom.h"
+#include "MMU.h"
 #include <cstdint>
 
 class CPU
 {
 public:
     CPU();
-    CPU(byte* sram, byte* vram);
+    CPU(std::shared_ptr<MMU> mmu);
     ~CPU();
 
     void ExecuteCode(std::shared_ptr<Rom> rom);
@@ -57,9 +58,7 @@ private:
     // Each instruction is a multiple of 4 clock ticks == 1 m-cycle. 
     std::uint64_t mCycles;
 
-    byte* sram;
-    // does vram need an offset?
-    byte* vram;
+    std::shared_ptr<MMU> mmu;
 
     inline void Add8(byte A, byte B, byte& C);
     inline void Sub8(byte A, byte B, byte& C);

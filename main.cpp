@@ -45,15 +45,27 @@ int main(int argc, char* argv[])
     // write these to memory at 0 and 1
     // read these back into registers
     // PASSED
+
+    // TODO before any further tests:
+    // sort out the memory mapping
+
     //
     // load an address into H and L
     // load a value into memory at HL
     // read value from memory at HL
     //
+    // Test the funky 8 bit load instructions
+    //
     // Load a value into memory at 0x02
     // and add it to a value loaded into A
     //
-    // Test vram
+    // Test address offsetting
+
+    // Need also:
+    // copy ROM into read-only memory
+    // IO interrupts
+    // graphics??
+    // automated testing
 
     // load rom from file to byte buffer
     std::shared_ptr<Rom> rom = make_shared<Rom>();

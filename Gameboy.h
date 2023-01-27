@@ -1,6 +1,7 @@
 #include <thread>
 
 #include "Rom.h"
+#include "MMU.h"
 #include "CPU.h"
 
 // 8 KiB of RAM
@@ -26,10 +27,7 @@ private:
 
     int clockSpeed = GAMEBOY_CLOCK_HZ;
 
-    // some memory pool?
-    // define this in some header so we have offset?
-    byte* sram;
-    byte* vram;
+    std::shared_ptr<MMU> mmu;
 
     // some graphics nonsense
 

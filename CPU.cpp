@@ -13,14 +13,11 @@ CPU::CPU()
 {
     registers.shorts[PC] = 0;
     mCycles = 0;
-    sram = nullptr;
-    vram = nullptr;
 }
 
-CPU::CPU(byte* sram, byte* vram)
+CPU::CPU(std::shared_ptr<MMU> mmu)
 {
-    this->sram = sram;
-    this->vram = vram;
+    this->mmu = mmu;
     registers.shorts[PC] = 0;
     mCycles = 0;
     
@@ -35,7 +32,7 @@ CPU::~CPU()
 
 void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
 {
-    if (!sram || !vram)
+    if (!mmu)
     {
         return;
     }
