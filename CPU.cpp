@@ -8,17 +8,17 @@
 
 using namespace std;
 
-// THis exists until I sort out a memory model class
 CPU::CPU()
 {
-    registers.shorts[PC] = 0;
+    // The program counter just starts at this address. It just does. 
+    registers.shorts[PC] = MMU::cartridgeHeaderOffset;
     mCycles = 0;
 }
 
 CPU::CPU(std::shared_ptr<MMU> mmu)
 {
     this->mmu = mmu;
-    registers.shorts[PC] = 0;
+    registers.shorts[PC] = MMU::cartridgeHeaderOffset;
     mCycles = 0;
     
     // Set registers to 0
@@ -38,9 +38,37 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
     }
 
     int i = 0;
+
+    // EI, DI, and RETI change interrupts on the cycle after
+    bool enableInterruptsNextCycle = false;
+    bool disableInterruptsNextCycle = false;
     
     while (true)
     {
+        // If PC has reached 0x100, then cartridge is valid;
+        // unmap system ROM and use cartridge ROM from now on.
+        mmu->UnmapSystemRom();
+
+
+        // Before executing an instruction, check if interrupts are pending:
+        // Do not do this if interrupts were just enabled - that lets them happen on the next cycle
+        if (interruptsAreEnabled)
+        {
+
+        }
+
+        // EI, DI and RETI change interrupt enablement on the cycle after their instruction
+        if (enableInterruptsNextCycle)
+        {
+            interruptsAreEnabled = true;
+            enableInterruptsNextCycle = false;
+        }
+        else if (disableInterruptsNextCycle)
+        {
+            interruptsAreEnabled = false;
+            disableInterruptsNextCycle = false;
+        }
+
         // get instruction at program counter
         uint8_t instruction = rom->bytes[registers.shorts[PC]];
 
@@ -65,11 +93,15 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             }
             case DI:
             {
-
+                disableInterruptsNextCycle = true;
+                mCycles += 1;
+                break;
             }
             case EI:
             {
-                
+                enableInterruptsNextCycle = true;
+                mCycles += 1;
+                break;
             }
 
             // 16 bit arithmetic

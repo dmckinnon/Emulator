@@ -1,13 +1,24 @@
 #include "MMU.h"
 #include <string.h>
 
-MMU::MMU()
+MMU::MMU(Rom& systemRom)
 {
     // memory is statically allocated
     // clear all memory to 0 and then set up any specific registers
     memset(memory, 0, sizeof(memory));
 
+    // Start with system ROM mapped and load default system ROM to it
+    useSystemRom = true;
+    memcpy(&this->systemRom, systemRom.bytes, systemRom.size);
+
     // set up registers
+
+    // Start with both video and the joypad interrupts enabled
+    memory[interruptEnableRegisterAddress] = 0x13;
+
+    // Interrupt flags - top 3 bits are always 1
+    memory[interruptFlagRegisterAddress] = 0xE0;
+
 }
 
 MMU::~MMU()
@@ -40,16 +51,34 @@ void MMU::SwapOutRomBank(Rom& rom, int bank)
 
 byte MMU::ReadFromAddress(uint16_t address)
 {
+    if (useSystemRom && address < cartridgeHeaderOffset)
+    {
+        return systemRom[address];
+    }
     return memory[address];
 }
 
 void MMU::WriteToAddress(uint16_t address, byte value)
 {
+    // If this write is to ROM bank 0, this is interpreted as a ROM bank switch
+    // the value is the bank to switch to
+    // TODO this is MBC1. How to use MBC3?
+    if (address >= cartridgeRomBank0Offset &&
+        address < cartridgeRomBankSwitchableOffset + cartridgeRomBankSwitchableSize)
+    {
+        // need to keep the damn rom lol
+        SwapOutRomBank(rom, value);
+    }
+
+    // If write is not allowed, do nothing
+    
     memory[address] = value;
 }
 
 void MMU::WriteToAddress(uint16_t address, uint16_t value)
 {
+    // If this write is to a ROM bank, intercept and check it's allowed
+
     memory[address] = value & 0xFF;
     memory[address + 1] = (value >> 8) & 0xFF;
 }

@@ -1,15 +1,10 @@
 #include "Gameboy.h"
 #include <string.h>
 
-Gameboy::Gameboy(std::shared_ptr<Rom> rom) :
-    rom(rom)
+Gameboy::Gameboy(std::shared_ptr<Rom> systemRom)
 {
     // allocate the MMU
-    mmu = std::make_shared<MMU>();
-
-    // Load ROM into memory ready for CPU to execute
-    // Is this expected? Would the chip do this? No - the CPU just executes the ROM
-    mmu->LoadRomToMemory(*rom);
+    mmu = std::make_shared<MMU>(systemRom);
 
     cpu = CPU(mmu);
 }
@@ -22,14 +17,21 @@ Gameboy::~Gameboy()
     // mmu will destroy itself
 }
 
-bool Gameboy::Run()
+bool Gameboy::LoadRom(std::shared_ptr<Rom> rom)
 {
-    // If a rom is not loaded, fail
-    if (rom == nullptr || rom->bytes == nullptr || rom->size == 0)
+    // If a rom is already loaded, fail
+    if (rom != nullptr)
     {
         return false;
     }
 
+    mmu->LoadRomToMemory(*rom);
+
+    return true;
+}
+
+bool Gameboy::Run()
+{
     // Create the display thread and CPU thread
     //auto cpuThread = std::thread([this](){cpu.ExecuteCode(rom);});
 
