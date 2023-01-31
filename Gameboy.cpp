@@ -4,7 +4,7 @@
 Gameboy::Gameboy(std::shared_ptr<Rom> systemRom)
 {
     // allocate the MMU
-    mmu = std::make_shared<MMU>(systemRom);
+    mmu = std::make_shared<MMU>(*systemRom);
 
     cpu = CPU(mmu);
 }
@@ -25,7 +25,7 @@ bool Gameboy::LoadRom(std::shared_ptr<Rom> rom)
         return false;
     }
 
-    mmu->LoadRomToMemory(*rom);
+    mmu->LoadRomToMemory(rom);
 
     return true;
 }
@@ -35,7 +35,7 @@ bool Gameboy::Run()
     // Create the display thread and CPU thread
     //auto cpuThread = std::thread([this](){cpu.ExecuteCode(rom);});
 
-    cpu.ExecuteCode(rom);
+    cpu.ExecuteCode();
 
     //cpuThread.join();
 

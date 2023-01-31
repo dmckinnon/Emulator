@@ -11,15 +11,51 @@ public:
     MMU(Rom& systemRom);
     ~MMU();
 
-    void LoadRomToMemory(Rom& rom);
+    void LoadRomToMemory(std::shared_ptr<Rom> rom);
 
     void UnmapSystemRom();
 
-    void SwapOutRomBank(Rom& rom, int bank);
+    inline byte ReadFromAddress(uint16_t address)
+    {
+        if (useSystemRom && address < cartridgeHeaderOffset)
+        {
+            return systemRom[address];
+        }
+        return memory[address];
+    }
 
-    inline byte ReadFromAddress(uint16_t address);
-    inline void WriteToAddress(uint16_t address, byte value);
-    inline void WriteToAddress(uint16_t address, uint16_t value);
+    inline void WriteToAddress(uint16_t address, byte value)
+    {
+        // If this write is to ROM bank 0, this is interpreted as a ROM bank switch
+        // the value is the bank to switch to
+        // TODO this is MBC1. How to use MBC3?
+        if (address >= cartridgeRomBank0Offset &&
+            address < cartridgeRomBankSwitchableOffset + cartridgeRomBankSwitchableSize)
+        {
+            // need to keep the damn rom lol
+            SwapOutRomBank(value);
+        }
+
+        // If write is not allowed, do nothing
+        
+        memory[address] = value;
+    }
+
+    inline void WriteToAddress(uint16_t address, uint16_t value)
+    {
+        // If this write is to ROM bank 0, this is interpreted as a ROM bank switch
+        // the value is the bank to switch to
+        // TODO this is MBC1. How to use MBC3?
+        if (address >= cartridgeRomBank0Offset &&
+            address < cartridgeRomBankSwitchableOffset + cartridgeRomBankSwitchableSize)
+        {
+            // need to keep the damn rom lol
+            SwapOutRomBank(value);
+        }
+
+        memory[address] = value & 0xFF;
+        memory[address + 1] = (value >> 8) & 0xFF;
+    }
 
     // offsets and bounds
     static const int interruptsOffset = 0xFF;
@@ -60,5 +96,7 @@ private:
     bool useSystemRom;
     byte systemRom[systemRomSize];
 
+    std::shared_ptr<Rom> currentRom;
 
+    void SwapOutRomBank(int bank);
 };

@@ -9,7 +9,7 @@ public:
     CPU(std::shared_ptr<MMU> mmu);
     ~CPU();
 
-    void ExecuteCode(std::shared_ptr<Rom> rom);
+    void ExecuteCode();
 
     void Execute();
 

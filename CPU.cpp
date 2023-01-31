@@ -11,14 +11,14 @@ using namespace std;
 CPU::CPU()
 {
     // The program counter just starts at this address. It just does. 
-    registers.shorts[PC] = MMU::cartridgeHeaderOffset;
+    registers.shorts[PC] = 0;
     mCycles = 0;
 }
 
 CPU::CPU(std::shared_ptr<MMU> mmu)
 {
     this->mmu = mmu;
-    registers.shorts[PC] = MMU::cartridgeHeaderOffset;
+    registers.shorts[PC] = 0;
     mCycles = 0;
     
     // Set registers to 0
@@ -30,7 +30,7 @@ CPU::~CPU()
 
 }
 
-void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
+void CPU::ExecuteCode()
 {
     if (!mmu)
     {
@@ -70,7 +70,7 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
         }
 
         // get instruction at program counter
-        uint8_t instruction = rom->bytes[registers.shorts[PC]];
+        uint8_t instruction = mmu->ReadFromAddress(registers.shorts[PC]);
 
         printf("instruction: %x\n", instruction);
 
@@ -147,15 +147,6 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
                 break;
             }
 
-            case ADD_HL_BC:
-            {
-                registers.shorts[HL] += registers.shorts[BC];
-                // Set flags H, C, reset N
-                registers.bytes[F] ^= AddSubFlag;
-                // how to read half carry and carry from OS?
-                break;
-            }
-
 
             /////////////////////////////
             // 8 bit arithmetic and logic
@@ -205,13 +196,14 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             }
             case ADD_A_HL:
             {
-                Add8(registers.bytes[A], sram[registers.shorts[HL]], registers.bytes[A]);
+                byte hl = mmu->ReadFromAddress(registers.shorts[HL]);
+                Add8(registers.bytes[A], hl, registers.bytes[A]);
                 mCycles += 1;
                 break;
             }
             case ADD_A_d8:
             {
-                Add8(registers.bytes[A], rom->bytes[registers.shorts[PC] + 1], registers.bytes[A]);
+                Add8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
                 registers.shorts[PC] ++;
                 mCycles += 2;
                 break;
@@ -262,13 +254,13 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             }
             case SUB_HL:
             {
-                Sub8(registers.bytes[A], sram[registers.shorts[HL]], registers.bytes[A]);
+                Sub8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[HL]), registers.bytes[A]);
                 mCycles += 1;
                 break;
             }
             case SUB_d8:
             {
-                Sub8(registers.bytes[A], rom->bytes[registers.shorts[PC] + 1], registers.bytes[A]);
+                Sub8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
                 registers.shorts[PC] ++;
                 mCycles += 2;
                 break;
@@ -319,13 +311,13 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             }
             case ADC_HL:
             {
-                AddC8(registers.bytes[A], sram[registers.shorts[HL]], registers.bytes[A]);
+                AddC8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[HL]), registers.bytes[A]);
                 mCycles += 1;
                 break;
             }
             case ADC_d8:
             {
-                AddC8(registers.bytes[A], rom->bytes[registers.shorts[PC] + 1], registers.bytes[A]);
+                AddC8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
                 registers.shorts[PC] ++;
                 mCycles += 2;
                 break;
@@ -376,13 +368,13 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             }
             case SBC_HL:
             {
-                SubC8(registers.bytes[A], sram[registers.shorts[HL]], registers.bytes[A]);
+                SubC8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[HL]), registers.bytes[A]);
                 mCycles += 1;
                 break;
             }
             case SBC_d8:
             {
-                SubC8(registers.bytes[A], rom->bytes[registers.shorts[PC] + 1], registers.bytes[A]);
+                SubC8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
                 registers.shorts[PC] ++;
                 mCycles += 2;
                 break;
@@ -433,13 +425,13 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             }
             case AND_HL:
             {
-                And8(registers.bytes[A], sram[registers.shorts[HL]], registers.bytes[A]);
+                And8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[HL]), registers.bytes[A]);
                 mCycles += 1;
                 break;
             }
             case AND_d8:
             {
-                And8(registers.bytes[A], rom->bytes[registers.shorts[PC] + 1], registers.bytes[A]);
+                And8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
                 registers.shorts[PC] ++;
                 mCycles += 2;
                 break;
@@ -490,13 +482,13 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             }
             case OR_HL:
             {
-                Or8(registers.bytes[A], sram[registers.shorts[HL]], registers.bytes[A]);
+                Or8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[HL]), registers.bytes[A]);
                 mCycles += 1;
                 break;
             }
             case OR_d8:
             {
-                Or8(registers.bytes[A], rom->bytes[registers.shorts[PC] + 1], registers.bytes[A]);
+                Or8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
                 registers.shorts[PC] ++;
                 mCycles += 2;
                 break;
@@ -547,13 +539,13 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             }
             case XOR_HL:
             {
-                Xor8(registers.bytes[A], sram[registers.shorts[HL]], registers.bytes[A]);
+                Xor8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[HL]), registers.bytes[A]);
                 mCycles += 1;
                 break;
             }
             case XOR_d8:
             {
-                Xor8(registers.bytes[A], rom->bytes[registers.shorts[PC] + 1], registers.bytes[A]);
+                Xor8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
                 registers.shorts[PC] ++;
                 mCycles += 2;
                 break;
@@ -604,13 +596,13 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             }
             case CP_HL:
             {
-                Cp8(registers.bytes[A], sram[registers.shorts[HL]]);
+                Cp8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[HL]));
                 mCycles += 1;
                 break;
             }
             case CP_d8:
             {
-                Cp8(registers.bytes[A], rom->bytes[registers.shorts[PC] + 1]);
+                Cp8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1));
                 registers.shorts[PC] ++;
                 mCycles += 2;
                 break;
@@ -662,7 +654,9 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             case INC_HL_v:
             {
                 // This increments the value pointed to by HL
-                Inc8(sram[registers.shorts[HL]]);
+                byte val = mmu->ReadFromAddress(registers.shorts[HL]);
+                Inc8(val);
+                mmu->WriteToAddress(registers.shorts[HL], val);
                 mCycles += 2;
                 break;
             }
@@ -712,8 +706,9 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             }
             case DEC_HL_v:
             {
-                // This decrements the value pointed to by HL
-                Dec8(sram[registers.shorts[HL]]);
+                byte val = mmu->ReadFromAddress(registers.shorts[HL]);
+                Dec8(val);
+                mmu->WriteToAddress(registers.shorts[HL], val);
                 mCycles += 2;
                 break;
             }
@@ -724,56 +719,56 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             // Load immediate value into each register
             case LOAD_A_d8:
             {
-                registers.bytes[A] = rom->bytes[registers.shorts[PC] + 1];
+                registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 registers.shorts[PC] ++;
                 mCycles += 2;
                 break;
             }
             case LOAD_B_d8:
             {
-                registers.bytes[B] = rom->bytes[registers.shorts[PC] + 1];
+                registers.bytes[B] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 registers.shorts[PC] ++;
                 mCycles += 2;
                 break;
             }
             case LOAD_C_d8:
             {
-                registers.bytes[C] = rom->bytes[registers.shorts[PC] + 1];
+                registers.bytes[C] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 registers.shorts[PC] ++;
                 mCycles += 2;
                 break;
             }
             case LOAD_D_d8:
             {
-                registers.bytes[D] = rom->bytes[registers.shorts[PC] + 1];
+                registers.bytes[D] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 registers.shorts[PC] ++;
                 mCycles += 2;
                 break;
             }
             case LOAD_E_d8:
             {
-                registers.bytes[E] = rom->bytes[registers.shorts[PC] + 1];
+                registers.bytes[E] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 registers.shorts[PC] ++;
                 mCycles += 2;
                 break;
             }
             case LOAD_H_d8:
             {
-                registers.bytes[H] = rom->bytes[registers.shorts[PC] + 1];
+                registers.bytes[H] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 registers.shorts[PC] ++;
                 mCycles += 2;
                 break;
             }
             case LOAD_L_d8:
             {
-                registers.bytes[L] = rom->bytes[registers.shorts[PC] + 1];
+                registers.bytes[L] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 registers.shorts[PC] ++;
                 mCycles += 2;
                 break;
             }
             case LOAD_HL_d8:
             {
-                sram[registers.shorts[HL]] = rom->bytes[registers.shorts[PC] + 1];
+                mmu->WriteToAddress(registers.shorts[HL], mmu->ReadFromAddress(registers.shorts[PC] + 1));
                 registers.shorts[PC] ++;
                 mCycles += 2;
                 break;
@@ -818,7 +813,7 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             }
             case LOAD_A_HL:
             {
-                registers.bytes[A] = sram[registers.shorts[HL]];
+                registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[HL]);
                 mCycles += 2;
                 break;
             }
@@ -874,7 +869,7 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             }
             case LOAD_B_HL:
             {
-                registers.bytes[B] = sram[registers.shorts[HL]];
+                registers.bytes[B] = mmu->ReadFromAddress(registers.shorts[HL]);
                 mCycles += 2;
                 break;
             }
@@ -924,7 +919,7 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             }
             case LOAD_C_HL:
             {
-                registers.bytes[C] = sram[registers.shorts[HL]];
+                registers.bytes[C] = mmu->ReadFromAddress(registers.shorts[HL]);
                 mCycles += 2;
                 break;
             }
@@ -974,7 +969,7 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             }
             case LOAD_D_HL:
             {
-                registers.bytes[D] = sram[registers.shorts[HL]];
+                registers.bytes[D] = mmu->ReadFromAddress(registers.shorts[HL]);
                 mCycles += 2;
                 break;
             }
@@ -1024,7 +1019,7 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             }
             case LOAD_E_HL:
             {
-                registers.bytes[E] = sram[registers.shorts[HL]];
+                registers.bytes[E] = mmu->ReadFromAddress(registers.shorts[HL]);
                 mCycles += 2;
                 break;
             }
@@ -1074,7 +1069,7 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             }
             case LOAD_H_HL:
             {
-                registers.bytes[H] = sram[registers.shorts[HL]];
+                registers.bytes[H] = mmu->ReadFromAddress(registers.shorts[HL]);
                 mCycles += 2;
                 break;
             }
@@ -1124,7 +1119,7 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             }
             case LOAD_L_HL:
             {
-                registers.bytes[L] = sram[registers.shorts[HL]];
+                registers.bytes[L] = mmu->ReadFromAddress(registers.shorts[HL]);
                 mCycles += 2;
                 break;
             }
@@ -1132,43 +1127,43 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             // Load the value of a register into the memory address pointed to by HL
             case LOAD_HL_A:
             {
-                sram[registers.shorts[HL]] = registers.bytes[A];
+                mmu->WriteToAddress(registers.shorts[HL], registers.bytes[A]);
                 mCycles += 2;
                 break;
             }
             case LOAD_HL_B:
             {
-                sram[registers.shorts[HL]] = registers.bytes[B];
+                mmu->WriteToAddress(registers.shorts[HL], registers.bytes[B]);
                 mCycles += 2;
                 break;
             }
             case LOAD_HL_C:
             {
-                sram[registers.shorts[HL]] = registers.bytes[C];
+                mmu->WriteToAddress(registers.shorts[HL], registers.bytes[C]);
                 mCycles += 2;
                 break;
             }
             case LOAD_HL_D:
             {
-                sram[registers.shorts[HL]] = registers.bytes[D];
+                mmu->WriteToAddress(registers.shorts[HL], registers.bytes[D]);
                 mCycles += 2;
                 break;
             }
             case LOAD_HL_E:
             {
-                sram[registers.shorts[HL]] = registers.bytes[E];
+                mmu->WriteToAddress(registers.shorts[HL], registers.bytes[E]);
                 mCycles += 2;
                 break;
             }
             case LOAD_HL_H:
             {
-                sram[registers.shorts[HL]] = registers.bytes[H];
+                mmu->WriteToAddress(registers.shorts[HL], registers.bytes[H]);
                 mCycles += 2;
                 break;
             }
             case LOAD_HL_L:
             {
-                sram[registers.shorts[HL]] = registers.bytes[L];
+                mmu->WriteToAddress(registers.shorts[HL], registers.bytes[L]);
                 mCycles += 2;
                 break;
             }
@@ -1178,25 +1173,25 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             // load A into BC or DE, and vice versa
             case LOAD_A_BC:
             {
-                registers.bytes[A] = sram[registers.shorts[BC]];
+                registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[BC]);
                 mCycles += 2;
                 break;
             }
             case LOAD_A_DE:
             {
-                registers.bytes[A] = sram[registers.shorts[DE]];
+                registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[DE]);
                 mCycles += 2;
                 break;
             }
             case LOAD_BC_A:
             {
-                sram[registers.shorts[BC]] = registers.bytes[A];
+                mmu->WriteToAddress(registers.shorts[BC], registers.bytes[A]);
                 mCycles += 2;
                 break;
             }
             case LOAD_DE_A:
             {
-                sram[registers.shorts[DE]] = registers.bytes[A];
+                mmu->WriteToAddress(registers.shorts[DE], registers.bytes[A]);
                 mCycles += 2;
                 break;
             }
@@ -1204,13 +1199,13 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             // Load and store with offset address
             case LOAD_Cv_A:
             {
-                sram[0xFF00 + registers.bytes[C]] = registers.bytes[A];
+                mmu->WriteToAddress(MMU::ioRegistersOffset + registers.bytes[C], registers.bytes[A]);
                 mCycles += 2;
                 break;
             }
             case LOAD_A_Cv:
             {
-                registers.bytes[A] = sram[0xFF00 + registers.bytes[C]];
+                registers.bytes[A] = mmu->ReadFromAddress(MMU::ioRegistersOffset + registers.bytes[C]);
                 mCycles += 2;
                 break;
             }
@@ -1218,17 +1213,17 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             // Load and store to absolute address
             case LOAD_a16_A:
             {
-                uint16_t address = rom->bytes[registers.shorts[PC] + 1] | (rom->bytes[registers.shorts[PC] + 2] << 8);
+                uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
                 registers.shorts[PC] += 2;
-                sram[address] = registers.bytes[A];
+                mmu->WriteToAddress(address, registers.bytes[A]);
                 mCycles += 4;
                 break;
             }
             case LOAD_A_a16:
             {
-                uint16_t address = rom->bytes[registers.shorts[PC] + 1] | (rom->bytes[registers.shorts[PC] + 2] << 8);
+                uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
                 registers.shorts[PC] += 2;
-                registers.bytes[A] = sram[address];
+                registers.bytes[A] = mmu->ReadFromAddress(address);
                 mCycles += 4;
                 break;
             }
@@ -1236,28 +1231,28 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             // Load and store from HL pointer to A, incrementing or decrementing the pointer after the fact
             case LOAD_A_HLplus:
             {
-                registers.bytes[A] = sram[registers.shorts[HL]];
+                registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[HL]);
                 registers.shorts[HL] ++;
                 mCycles += 2;
                 break;
             }
             case LOAD_A_HLminus:
             {
-                registers.bytes[A] = sram[registers.shorts[HL]];
+                registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[HL]);
                 registers.shorts[HL] --;
                 mCycles += 2;
                 break;
             }
             case LOAD_HLplus_A:
             {
-                sram[registers.shorts[HL]] = registers.bytes[A];
+                mmu->WriteToAddress(registers.shorts[HL], registers.bytes[A]);
                 registers.shorts[HL] ++;
                 mCycles += 2;
                 break;
             }
             case LOAD_HLminus_A:
             {
-                sram[registers.shorts[HL]] = registers.bytes[A];
+                mmu->WriteToAddress(registers.shorts[HL], registers.bytes[A]);
                 registers.shorts[HL] --;
                 mCycles += 2;
                 break;
@@ -1266,14 +1261,14 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
             // Load and store from absolute 8 bit address offset by 0xFF00
             case LOAD_H_a8_A:
             {
-                sram[0xFF00 + rom->bytes[registers.shorts[PC] + 1]] = registers.bytes[A];
+                mmu->WriteToAddress(MMU::ioRegistersOffset + mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
                 registers.shorts[PC] ++;
                 mCycles += 3;
                 break;
             }
             case LOAD_H_A_a8:
             {
-                registers.bytes[A] = sram[0xFF00 + rom->bytes[registers.shorts[PC] + 1]];
+                registers.bytes[A] = mmu->ReadFromAddress(MMU::ioRegistersOffset + mmu->ReadFromAddress(registers.shorts[PC] + 1));
                 registers.shorts[PC] ++;
                 mCycles += 3;
                 break;
@@ -1294,13 +1289,6 @@ void CPU::ExecuteCode(std::shared_ptr<Rom> rom)
                 registers.bytes[E], registers.bytes[H], registers.bytes[L], 
                 registers.bytes[S], registers.bytes[P], 
                 registers.bytes[F]);
-
-        // Loop over first 8 bytes of memory and print them
-        for (int i = 0; i < 8; i++)
-        {
-            printf("%x ", sram[i]);
-        }
-        printf("\n");
 
         registers.shorts[PC] ++;
 
