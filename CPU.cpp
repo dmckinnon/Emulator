@@ -10,23 +10,45 @@ using namespace std;
 
 CPU::CPU()
 {
-    // The program counter just starts at this address. It just does. 
-    registers.shorts[PC] = 0;
     mCycles = 0;
+    InitialiseRegisters();
 }
 
 CPU::CPU(std::shared_ptr<MMU> mmu)
 {
     this->mmu = mmu;
-    registers.shorts[PC] = 0;
     mCycles = 0;
     
-    // Set registers to 0
-    memset(&registers, 0, 12);
+    InitialiseRegisters();
 }
 
 CPU::~CPU()
 {
+
+}
+
+void CPU::InitialiseRegisters()
+{
+    // The stack starts at 0xFFFE and grows down
+    // This is High ram - and an overflow will go into
+    // io register space. So we need to block that and throw a
+    // stack overflow exception in that case
+    registers.shorts[SP] = 0xFFFE;
+
+    // the program counter just starts here, unless we want the system ROM
+    // Realistically, we can skip the system ROM
+#ifdef SKIP_BOOT_ROM
+    registers.shorts[PC] = 0x100;
+#else
+    registers.shorts[PC] = 0;
+#endif
+
+    // These registers just contain these values apparently
+    // see https://gbdev.io/pandocs/Power_Up_Sequence.html
+    registers.shorts[AF] = 0x0100;
+    registers.shorts[BC] = 0xFF13;
+    registers.shorts[DE] = 0x00C1;
+    registers.shorts[HL] = 0x8403;
 
 }
 
@@ -62,6 +84,8 @@ void CPU::ExecuteCode()
         {
             interruptsAreEnabled = true;
             enableInterruptsNextCycle = false;
+            // Write to interrupt enable register
+
         }
         else if (disableInterruptsNextCycle)
         {

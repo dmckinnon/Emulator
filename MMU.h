@@ -36,8 +36,18 @@ public:
             SwapOutRomBank(value);
         }
 
-        // If write is not allowed, do nothing
-        
+        // allow writes above the allocated ROM area in memory
+        if (address < characterRamOffset)
+        {
+            return;
+        }
+
+        // If we write to RAM we also need to write to the same relative address in ECHO ram?
+        if (address >= echoRamOffset && address < echoRamOffset + echoRamSize)
+        {
+            memory[address - echoRamOffset + cartridgeRamOffset] = value;
+        }
+
         memory[address] = value;
     }
 
@@ -51,6 +61,12 @@ public:
         {
             // need to keep the damn rom lol
             SwapOutRomBank(value);
+        }
+
+        // allow writes above the allocated ROM area in memory
+        if (address < characterRamOffset)
+        {
+            return;
         }
 
         memory[address] = value & 0xFF;

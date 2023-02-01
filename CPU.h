@@ -62,6 +62,8 @@ private:
 
     bool interruptsAreEnabled = false;
 
+    void InitialiseRegisters();
+
     inline void Add8(byte A, byte B, byte& C);
     inline void Sub8(byte A, byte B, byte& C);
     inline void AddC8(byte A, byte B, byte& C);
