@@ -99,6 +99,27 @@ void MMU::LoadRomToMemory(std::shared_ptr<Rom> rom)
         memcpy(&memory[cartridgeRomBank0Offset], rom->bytes, cartridgeRomBank0Size);
         memcpy(&memory[cartridgeRomBankSwitchableOffset], &rom->bytes[cartridgeRomBank0Size], rom->size - cartridgeRomBank0Size);
     }
+
+    // Determine which MBC the game uses
+    int mbcMode = memory[MBC_MODE_ADDRESS];
+    switch (mbcMode)
+    {
+        case 1:
+        case 2:
+        case 3:
+            mbc = 1;
+            break;
+        case 5:
+        case 6:
+            mbc = 2;
+            break;
+        // TODO what's MBC 3
+        default:
+            break;
+    }
+
+    // Check how many RAM banks the game wants
+    numRamBanks = memory[ramBankAddress];
 }
 
 void MMU::UnmapSystemRom()
@@ -108,6 +129,19 @@ void MMU::UnmapSystemRom()
 
 void MMU::SwapOutRomBank(int bank)
 {
+    // bank 0 is always loaded; never switch to bank 0
+    if (bank == 0)
+    {
+        return;
+    }
+
     // Swap out the switchable bank with the bank specified
+    currentRomBank = bank;
     memcpy(&memory[cartridgeRomBankSwitchableOffset], &currentRom->bytes[cartridgeRomBank0Size + (bank * cartridgeRomBankSwitchableSize)], cartridgeRomBankSwitchableSize);
+}
+
+void MMU::SwapOutRamBank(int bank)
+{
+    currentRamBank = bank;
+    
 }

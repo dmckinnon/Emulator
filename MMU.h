@@ -56,6 +56,11 @@ public:
         // If this write is to ROM bank 0, this is interpreted as a ROM bank switch
         // the value is the bank to switch to
         // TODO this is MBC1. How to use MBC3?
+
+        // if write is between 2000 and 4000, then it's a ROM switch
+        // if write is between 4000 and 6000, then it
+        // depends on whether we're in ROM or RAM mode
+        // if 0-2000, then it's RAM enable/disable
         if (address >= cartridgeRomBank0Offset &&
             address < cartridgeRomBankSwitchableOffset + cartridgeRomBankSwitchableSize)
         {
@@ -79,7 +84,7 @@ public:
     static const int cartridgeHeaderOffset = 0x100;
     static const int cartridgeHeaderSize = 0x50;
     static const int cartridgeRomBank0Offset = 0x150;
-    static const int cartridgeRomBank0Size = 0x4000 - 0x150;
+    static const int cartridgeRomBank0Size = 0x4000;// - 0x150;
     static const int cartridgeRomBankSwitchableOffset = 0x4000;
     static const int cartridgeRomBankSwitchableSize = 0x4000;
     static const int characterRamOffset = 0x8000;
@@ -114,5 +119,14 @@ private:
 
     std::shared_ptr<Rom> currentRom;
 
+    int currentRomBank = 1;
+    int mbc = 0;
+    static constexpr int MBC_MODE_ADDRESS = 0x147;
+
+    int currentRamBank = 0;
+    int numRamBanks = 1;
+    static constexpr int ramBankAddress = 0x148;
+
     void SwapOutRomBank(int bank);
+    void SwapOutRamBank(int bank);
 };
