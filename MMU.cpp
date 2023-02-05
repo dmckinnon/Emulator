@@ -1,5 +1,6 @@
 #include "MMU.h"
 #include <string.h>
+#include <iostream>
 
 MMU::MMU(Rom& systemRom)
 {
@@ -115,22 +116,159 @@ void MMU::LoadRomToMemory(std::shared_ptr<Rom> rom)
             break;
         // TODO what's MBC 3
         default:
+            mbc = 0;
             break;
     }
 
     // Check how many RAM banks the game wants
+    // TODO have I got the sizes right here?
     numRamBanks = memory[ramBankAddress];
+    if (mbc == 1)
+    {
+        allRam = new byte[numRamBanks * cartridgeRamSize];
+    }
+    
 }
 
 void MMU::UnmapSystemRom()
 {
     useSystemRom = false;
+    if (allRam != nullptr)
+        delete allRam;
+}
+
+void MMU::HandleBanking(uint16_t address, byte value)
+{
+    // Handle RAM enabling
+    if (address < 0x2000)
+    {
+        if (mbc == 1 || mbc == 2)
+        {
+            EnableRamBank(address, value);
+        }
+    }
+
+    // Handle ROM bank switching for lower addresses
+    else if (address >= 0x2000 && address < 0x4000)
+    {
+        if (mbc == 1 || mbc == 2)
+        {
+            SwitchLoRomBank(value);
+        }
+    }
+
+    // Handle ROM or RAM bank switching for higher addresses
+    else if (address >= 0x4000 && address < 0x6000)
+    {
+        if (mbc == 1)
+        {
+            if (RomBankEnabled)
+            {
+                SwitchHiRomBank(value);
+            }
+            else
+            {
+                SwitchRamBank(value);
+            }
+        }
+    }
+
+    // Handle ROM/RAM banking mode switching
+    else if (address >= 0x6000 && address < 0x8000)
+    {
+        if (mbc == 1)
+        {
+            SwitchRomRamMode(value);
+        }
+    }
+}
+
+void MMU::EnableRamBank(uint16_t address, byte value)
+{
+    if (mbc == 2)
+    {
+        // Under MBC2, the 4th bit of the address must be 0 to perform RAM enable this way
+        if ((address & 0x0010) == 0x0010)
+        {
+            return;
+        }
+    }
+
+    // All other logic is the same regardless of MBC1 or 2
+    if ((value & 0x0F) == 0x0A)
+    {
+        RAMBankEnabled = true;
+    }
+    else
+    {
+        RAMBankEnabled = false;
+    }
+}
+
+void MMU::SwitchLoRomBank(byte value)
+{
+    int bank = 0;
+    // MBC2 only uses the lower 4 bits of the value written to
+    // determine which ROM bank to use
+    if (mbc == 2)
+    {
+        bank = value & 0x0F;
+    }
+    // MBC1 uses the lower 5 bits of the value
+    else if (mbc == 1)
+    {
+        bank = value & 0x1F;
+        // Yeet the bottom 5 bits of the current bank
+        // and replace with what we just got
+        bank |= currentRomBank & 0xE0;
+    }
+
+    // Swap out the switchable bank with the bank specified
+    SwapOutRomBank(bank);
+}
+
+void MMU::SwitchHiRomBank(byte value)
+{
+    // Note: this is only used for MBC1
+
+    // the new bank value is the old bank value
+    // with the top 3 bits replaced by the top 3 bits incoming
+    int bank = currentRomBank & 0x1F;
+    bank |= value & 0xE0;
+    // Swap out the switchable bank with the bank specified
+    SwapOutRomBank(bank);
+}
+
+void MMU::SwitchRamBank(byte value)
+{
+    // Note: this is only used for MBC1
+
+    if (allRam == nullptr)
+    {
+        // something bad happened
+        std::cerr << "Tried to switch RAM bank when no RAM banks exist" << std::endl;
+    }
+
+    // page out old ram
+    memcpy(&allRam[cartridgeRamSize*currentRamBank], &memory[cartridgeRamOffset], cartridgeRamSize);
+
+    // MBC1 uses the lower 2 bits of the value
+    int currentRamBank = value & 0x03;
+
+    // Swap out the switchable bank with the bank specified
+    memcpy(&memory[cartridgeRamOffset], &allRam[cartridgeRamSize*currentRamBank], cartridgeRamSize);
 }
 
 void MMU::SwapOutRomBank(int bank)
 {
-    // bank 0 is always loaded; never switch to bank 0
+    // bank 0 is always loaded; make it bank 1 instead
     if (bank == 0)
+    {
+        bank = 1;
+    }
+
+    // If the value is the same as the current bank, do nothing
+    if (bank == currentRomBank)
     {
         return;
     }
@@ -140,8 +278,12 @@ void MMU::SwapOutRomBank(int bank)
     memcpy(&memory[cartridgeRomBankSwitchableOffset], &currentRom->bytes[cartridgeRomBank0Size + (bank * cartridgeRomBankSwitchableSize)], cartridgeRomBankSwitchableSize);
 }
 
-void MMU::SwapOutRamBank(int bank)
+void MMU::SwitchRomRamMode(byte value)
 {
-    currentRamBank = bank;
-    
+    RomBankEnabled = value & 0x01? false : true;
+    if (RomBankEnabled)
+    {
+        byte newRamBank = 0;
+        SwitchRamBank(newRamBank);
+    }
 }

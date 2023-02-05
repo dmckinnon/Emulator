@@ -26,19 +26,11 @@ public:
 
     inline void WriteToAddress(uint16_t address, byte value)
     {
-        // If this write is to ROM bank 0, this is interpreted as a ROM bank switch
-        // the value is the bank to switch to
-        // TODO this is MBC1. How to use MBC3?
-        if (address >= cartridgeRomBank0Offset &&
-            address < cartridgeRomBankSwitchableOffset + cartridgeRomBankSwitchableSize)
+        // Writing to the ROM is interpreted as a ROM/RAM bank switch
+        // so we handle this. The logic is intricate.
+        if (address < cartridgeRomBankSwitchableOffset + cartridgeRomBankSwitchableSize)
         {
-            // need to keep the damn rom lol
-            SwapOutRomBank(value);
-        }
-
-        // allow writes above the allocated ROM area in memory
-        if (address < characterRamOffset)
-        {
+            HandleBanking(address, value);
             return;
         }
 
@@ -84,7 +76,7 @@ public:
     static const int cartridgeHeaderOffset = 0x100;
     static const int cartridgeHeaderSize = 0x50;
     static const int cartridgeRomBank0Offset = 0x150;
-    static const int cartridgeRomBank0Size = 0x4000;// - 0x150;
+    static const int cartridgeRomBank0Size = 0x4000 - 0x150;
     static const int cartridgeRomBankSwitchableOffset = 0x4000;
     static const int cartridgeRomBankSwitchableSize = 0x4000;
     static const int characterRamOffset = 0x8000;
@@ -121,12 +113,20 @@ private:
 
     int currentRomBank = 1;
     int mbc = 0;
+    bool RomBankEnabled = true;
     static constexpr int MBC_MODE_ADDRESS = 0x147;
 
     int currentRamBank = 0;
     int numRamBanks = 1;
+    bool RAMBankEnabled = false;
     static constexpr int ramBankAddress = 0x148;
+    byte* allRam = nullptr;
 
+    void EnableRamBank(uint16_t address, byte value);
+    void SwitchLoRomBank(byte value);
+    void SwitchHiRomBank(byte value);
+    void SwitchRamBank(byte value);
+    void SwitchRomRamMode(byte value);
     void SwapOutRomBank(int bank);
-    void SwapOutRamBank(int bank);
+    void HandleBanking(uint16_t address, byte value);
 };
