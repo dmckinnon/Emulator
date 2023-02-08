@@ -74,4 +74,6 @@ private:
     inline void Cp8(byte A, byte B);
     inline void Inc8(byte& A);
     inline void Dec8(byte& A);
+
+    inline void Add16(uint16_t& A, uint16_t& B, uint16_t& C);
 };

@@ -11,11 +11,11 @@
 #define PREFIX      0xCB
 
 // Jumps / calls
-#define JUMP_RETURN_NZ_r8  0x20
-#define JUMP_RETURN_NC_r8  0x30
-#define JUMP_RETURN_r8     0x18
-#define JUMP_RETURN_Z_r8   0x28
-#define JUMP_RETURN_C_r8   0x38
+#define JUMP_REL_NZ_r8     0x20
+#define JUMP_REL_NC_r8     0x30
+#define JUMP_REL_r8        0x18
+#define JUMP_REL_Z_r8      0x28
+#define JUMP_REL_C_r8      0x38
 #define JUMP_NZ_a16        0xC2
 #define JUMP_NC_a16        0xD2
 #define JUMP_a16           0xC3
@@ -142,6 +142,8 @@
 #define LOAD_BC_d16   0x01 // TODO does this need the next instr?
 #define LOAD_DE_d16   0x11
 #define LOAD_HL_d16   0x21
+
+// Stack pointer instructions
 #define LOAD_SP_d16   0x31
 #define LOAD_a16_SP   0x08
 #define POP_BC        0xC1
@@ -152,7 +154,6 @@
 #define PUSH_HL       0xE5
 #define POP_AF        0xF1
 #define PUSH_AF       0xF5
-#define LOAD_a16_SP   0x08
 #define LOAD_HL_SP_r8 0xF8
 #define LOAD_SP_HL    0xF9
 
@@ -262,6 +263,12 @@
 #define CCF       0x3F
 
 
+// 8 bit shift / rotate and bit instructions
+#define ROTATE_LEFT_CA  0x07
+#define ROTATE_LEFT_A   0x17
+#define ROTATE_RIGHT_CA 0x0F
+#define ROTATE_RIGHT_A  0x1F
+
 // 16 bit arithmetic / logic
 #define INC_BC      0x03
 #define INC_DE      0x13
@@ -277,12 +284,6 @@
 #define ADD_HL_DE   0x19
 #define ADD_HL_HL   0x29
 #define ADD_HL_SP   0x39
-
-// 8 bit shift / rotate and bit instructions
-#define ROTATE_LEFT_CA  0x07
-#define ROTATE_LEFT_A   0x17
-#define ROTATE_RIGHT_CA 0x0F
-#define ROTATE_RIGHT_A  0x1F
 
 // All the things prefixed by CB
 #define RLC_B    0x00

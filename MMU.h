@@ -43,31 +43,12 @@ public:
         memory[address] = value;
     }
 
+    // According to ChatGPT, a 16-bit write functions as two 8-bit writes
+    // so we implement it as such
     inline void WriteToAddress(uint16_t address, uint16_t value)
     {
-        // If this write is to ROM bank 0, this is interpreted as a ROM bank switch
-        // the value is the bank to switch to
-        // TODO this is MBC1. How to use MBC3?
-
-        // if write is between 2000 and 4000, then it's a ROM switch
-        // if write is between 4000 and 6000, then it
-        // depends on whether we're in ROM or RAM mode
-        // if 0-2000, then it's RAM enable/disable
-        if (address >= cartridgeRomBank0Offset &&
-            address < cartridgeRomBankSwitchableOffset + cartridgeRomBankSwitchableSize)
-        {
-            // need to keep the damn rom lol
-            SwapOutRomBank(value);
-        }
-
-        // allow writes above the allocated ROM area in memory
-        if (address < characterRamOffset)
-        {
-            return;
-        }
-
-        memory[address] = value & 0xFF;
-        memory[address + 1] = (value >> 8) & 0xFF;
+        WriteToAddress(address, (byte)(value & 0xFF));
+        WriteToAddress(address + 1, (byte)(value >> 8));
     }
 
     // offsets and bounds
@@ -96,11 +77,14 @@ public:
     static const int oamOffset = 0xFE00;
     static const int oamSize = 0xA0;
     static const int ioRegistersOffset = 0xFF00;
+    
     static const int interruptFlagRegisterAddress = 0xFF0F;
     static const int ioRegistersSize = 0x80;
     static const int highRamOffset = 0xFF80;
     static const int highRamSize = 0x7F;
     static const int interruptEnableRegisterAddress = 0xFFFF;
+
+    static const int TIMARegisterAddress = 0xFF05;
 
 
 private:
