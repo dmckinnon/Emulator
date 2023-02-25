@@ -40,6 +40,13 @@ public:
             memory[address - echoRamOffset + cartridgeRamOffset] = value;
         }
 
+        // Writing to the clock divider register resets it, regardless of value
+        // TODO
+        if (address == DIVRegisterAddress)
+        {
+            value = 0;
+        }
+
         memory[address] = value;
     }
 
@@ -84,7 +91,20 @@ public:
     static const int highRamSize = 0x7F;
     static const int interruptEnableRegisterAddress = 0xFFFF;
 
+
+    // Timer registers and bits
+    static const int DIVRegisterAddress = 0xFF04;
     static const int TIMARegisterAddress = 0xFF05;
+    static const int TMARegisterAddress = 0xFF06;
+    static const int TMCRegisterAddress = 0xFF07;
+    static const uint8_t ClockEnableBit = 0x4;
+    static const uint8_t TimerInterruptBit = 0x4;
+
+    // Special function just for writing to clock divider
+    inline void WriteToDivRegister_Allowed(byte val)
+    {
+        memory[DIVRegisterAddress] = val;
+    }
 
 
 private:

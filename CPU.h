@@ -56,13 +56,44 @@ private:
 
     // The cycle counter works in M-cycles, not # of clock ticks
     // Each instruction is a multiple of 4 clock ticks == 1 m-cycle. 
-    std::uint64_t mCycles;
+    uint16_t clockCounter;
+    uint16_t clockDivider;
 
     std::shared_ptr<MMU> mmu;
 
     bool interruptsAreEnabled = false;
 
     void InitialiseRegisters();
+
+    // This processes clock cycles and anything related,
+    // such as timers and interrupts
+    void ExecuteCycles(int numMCycles);
+
+    // Execute next instruction, increment PC
+    // returns number of cycles of execution it took
+    // in mCycles, which is 4*clock cycles
+    int ExecuteNextInstruction();
+
+    inline int GetTmcFrequency()
+    {
+        byte f = mmu->ReadFromAddress(mmu::TMCRegisterAddress);
+        switch (f)
+        {
+            case 0:
+                return 1024; // 4096 Hz
+            case 1:
+                return 16;   // 262144 Hz
+            case 3:
+                return 64;   // 65536 Hz
+            case 4:
+                return 256;  // 16384 Hz
+            default:
+                // crash?
+                break;
+        }
+        // this will cause a crash
+        return 0;
+    }
 
     inline void Add8(byte A, byte B, byte& C);
     inline void Sub8(byte A, byte B, byte& C);
