@@ -91,14 +91,21 @@ public:
     static const int highRamSize = 0x7F;
     static const int interruptEnableRegisterAddress = 0xFFFF;
 
+    // Interrupt bits
+    static const byte vblankInterruptBit = 0x1;
+    static const uint16_t VBlankISRAddress = 0x0040;
+    static const byte lcdInterruptBit = 0x2;
+    static const uint16_t LCDISRAddress = 0x0048;
+    static const byte timerInterruptBit = 0x4;
+    static const byte joypadInterruptBit = 0x8;
 
     // Timer registers and bits
     static const int DIVRegisterAddress = 0xFF04;
     static const int TIMARegisterAddress = 0xFF05;
     static const int TMARegisterAddress = 0xFF06;
     static const int TMCRegisterAddress = 0xFF07;
-    static const uint8_t ClockEnableBit = 0x4;
-    static const uint8_t TimerInterruptBit = 0x4;
+    static const byte ClockEnableBit = 0x4;
+    
 
     // Special function just for writing to clock divider
     inline void WriteToDivRegister_Allowed(byte val)

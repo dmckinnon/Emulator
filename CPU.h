@@ -74,6 +74,8 @@ private:
     // in mCycles, which is 4*clock cycles
     int ExecuteNextInstruction();
 
+    void CheckAndMaybeHandleInterrupts();
+
     inline int GetTmcFrequency()
     {
         byte f = mmu->ReadFromAddress(mmu::TMCRegisterAddress);

@@ -10,14 +10,16 @@ using namespace std;
 
 CPU::CPU()
 {
-    mCycles = 0;
+    clockCounter = 0;
+    clockDivider = 0;
     InitialiseRegisters();
 }
 
 CPU::CPU(std::shared_ptr<MMU> mmu)
 {
     this->mmu = mmu;
-    mCycles = 0;
+    clockCounter = 0;
+    clockDivider = 0;
     
     InitialiseRegisters();
 }
@@ -54,49 +56,107 @@ void CPU::InitialiseRegisters()
 
 void CPU::ExecuteCycles(int numMCycles)
 {
-    clockDivider += 4*cycles;
+    clockDivider += 4*numMCycles;
     mmu->WriteToDivRegister_Allowed(clockDivider >> 8);
 
 
     // Note: clock must be enabled to update clock
-    bool isClockEnabled = mmu->ReadFromAddress(TMCRegisterAddress) & mmu::ClockEnableBit;
+    bool isClockEnabled = mmu->ReadFromAddress(MMU::TMCRegisterAddress) & MMU::ClockEnableBit;
     if (isClockEnabled)
     {
         clockCounter += 4*numMCycles;
 
         // TIMA only gets updated at the set frequency, downsampled from the 
         // system clock
-        int frequency = GetTmcFrequencyCount();
-        if (clockCounter >= CLOCK_SPEED/tmcFrequency)
+        int frequency = GetTmcFrequency();
+        if (clockCounter >= CLOCKSPEED/frequency)
         {   
             // reset clockCounter
 
             // Read clock
-            byte timaVal = mmu->ReadFromAddress(mmu::TIMARegisterAddress);
+            byte timaVal = mmu->ReadFromAddress(MMU::TIMARegisterAddress);
             timaVal ++;
             // Check overflow
             if (timaVal == 0)
             {
                 // clock overflow occurred - request timer interrupt
-                uint8_t currentInterrupts = mmu->ReadFromAddress(interruptFlagRegisterAddress);
-                mmu->WriteToAddress(interruptFlagRegisterAddress, mmu::TimerInterruptBit | currentInterrupts);
+                uint8_t currentInterrupts = mmu->ReadFromAddress(MMU::interruptFlagRegisterAddress);
+                mmu->WriteToAddress(MMU::interruptFlagRegisterAddress, MMU::TimerInterruptBit | currentInterrupts);
 
                 // replace TIMA register with TMA register
                 // NOTE: technically this should happen one m-cycle *after*
                 // the overflow occurred - and it is possible to write in this period and overload the TMA write
                 // Right now, we are ignoring this since m-cycles are grouped
-                mmu->WriteToAddress(mmu::TIMARegisterAddress, mmu->ReadFromAddress(mmu::TMARegisterAddress));
+                mmu->WriteToAddress(MMU::TIMARegisterAddress, mmu->ReadFromAddress(MMU::TMARegisterAddress));
                 // add the m-cycle that should occur here
                 clockCounter += 4;
             }
             else
             {
-                mmu->WriteToAddress(mmu::TIMARegisterAddress, timaVal);
+                mmu->WriteToAddress(MMU::TIMARegisterAddress, timaVal);
             }
         }
-
-        
     }
+}
+
+void CPU::CheckAndMaybeHandleInterrupts()
+{
+    // Check if any interrupt flags are set. If they are, handle the top priority one
+    // take a lock on reading interupt flags as other threads can set them
+
+    // check that IE bit and IF bit are both one before running that interrupt
+
+    // this takes 20 clock cycles to just dispatch
+
+    // remember to disable interrupts after handling
+    // it is expected that an ISR uses RETI to return
+
+    // check interrupts in priority order
+    byte interruptEnable = mmu->ReadFromAddress(MMU::interruptEnableRegisterAddress);
+    byte interruptRequests = mmu->ReadFromAddress(MMU::interruptFlagRegisterAddress);
+
+    byte whichInterrupt = interruptEnable & interruptRequests;
+    // if we had any interrupt, push PC onto stack, disable interrupts
+    if (whichInterrupt != 0)
+    {
+        // push PC onto Stack
+        mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC]);
+        mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
+
+        // disable interrupts
+        interruptsAreEnabled = 0;
+    }
+
+    // Set new PC based on interrupt
+    if (whichInterrupt & MMU::vblankInterruptBit)
+    {
+        // Set PC to start of VBlank ISR
+        registers.shorts[PC] = MMU::VBlankISRAddress;      
+    }
+    else if (whichInterrupt & MMU::lcdInterruptBit)
+    {
+        // Set PC to start of LCD Stat ISR
+        registers.shorts[PC] = MMU::LCDISRAddress;
+    }
+    else if (whichInterrupt & MMU::timerInterruptBit)
+    {
+        register.shorts[PC] = MMU::TimerISRAddress;
+    }
+    else if (whichInterrupt & MMU::serialInterruptBit)
+    {
+        register.shorts[PC] = MMU::SerialISRAddress;
+    }
+    else if (whichInterrupt & MMU::joypadInterruptBit)
+    {
+        register.shorts[PC] = MMU::JoypadISRAddress;
+    }
+
+    // execute 20 clock cycles = 5 machine cycles
+    // note that this won't trigger an interrupt if the timer overflows
+    // as we are currently serving an ISR
+    ExecuteCycles(5);
+
+    // continue execution
 }
 
 void CPU::ExecuteCode()
@@ -136,9 +196,10 @@ void CPU::ExecuteCode()
         // Check if interrupts are pending:
         // if they are, execute
         // Do not do this if interrupts were just enabled - that lets them happen on the next cycle
+        // This boolean functions as the IME flag - this en/dis-ables jumping to interrupt vectors
         if (interruptsAreEnabled)
         {
-
+            CheckAndMaybeHandleInterrupts();
         }
 
         // EI, DI and RETI change interrupt enablement on the cycle after their instruction
