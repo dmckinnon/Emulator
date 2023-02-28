@@ -18,7 +18,7 @@ bool LoadRomFromFile(std::string filename, std::shared_ptr<Rom> rom)
         romFile.seekg(0, std::ios::beg);
 
         rom->size = length;
-        romFile.read((char*)rom->bytes, rom->size);
+        romFile.read((char*)rom->uint8_ts, rom->size);
     }
     else
     {

@@ -10,7 +10,7 @@ MMU::MMU(Rom& systemRom)
 
     // Start with system ROM mapped and load default system ROM to it
     useSystemRom = true;
-    memcpy(&this->systemRom, systemRom.bytes, systemRom.size);
+    memcpy(&this->systemRom, systemRom.uint8_ts, systemRom.size);
 
     // set up registers. See 
     // http://www.codeslinger.co.uk/pages/projects/gameboy/hardware.html
@@ -93,12 +93,12 @@ void MMU::LoadRomToMemory(std::shared_ptr<Rom> rom)
     // TODO read into this
     if (rom->size < cartridgeRomBank0Size)
     {
-        memcpy(&memory[cartridgeRomBank0Offset], rom->bytes, rom->size);
+        memcpy(&memory[cartridgeRomBank0Offset], rom->uint8_ts, rom->size);
     }
     else
     {
-        memcpy(&memory[cartridgeRomBank0Offset], rom->bytes, cartridgeRomBank0Size);
-        memcpy(&memory[cartridgeRomBankSwitchableOffset], &rom->bytes[cartridgeRomBank0Size], rom->size - cartridgeRomBank0Size);
+        memcpy(&memory[cartridgeRomBank0Offset], rom->uint8_ts, cartridgeRomBank0Size);
+        memcpy(&memory[cartridgeRomBankSwitchableOffset], &rom->uint8_ts[cartridgeRomBank0Size], rom->size - cartridgeRomBank0Size);
     }
 
     // Determine which MBC the game uses
@@ -125,7 +125,7 @@ void MMU::LoadRomToMemory(std::shared_ptr<Rom> rom)
     numRamBanks = memory[ramBankAddress];
     if (mbc == 1)
     {
-        allRam = new byte[numRamBanks * cartridgeRamSize];
+        allRam = new uint8_t[numRamBanks * cartridgeRamSize];
     }
     
 }
@@ -137,7 +137,7 @@ void MMU::UnmapSystemRom()
         delete allRam;
 }
 
-void MMU::HandleBanking(uint16_t address, byte value)
+void MMU::HandleBanking(uint16_t address, uint8_t value)
 {
     // Handle RAM enabling
     if (address < 0x2000)
@@ -183,7 +183,7 @@ void MMU::HandleBanking(uint16_t address, byte value)
     }
 }
 
-void MMU::EnableRamBank(uint16_t address, byte value)
+void MMU::EnableRamBank(uint16_t address, uint8_t value)
 {
     if (mbc == 2)
     {
@@ -205,7 +205,7 @@ void MMU::EnableRamBank(uint16_t address, byte value)
     }
 }
 
-void MMU::SwitchLoRomBank(byte value)
+void MMU::SwitchLoRomBank(uint8_t value)
 {
     int bank = 0;
     // MBC2 only uses the lower 4 bits of the value written to
@@ -227,7 +227,7 @@ void MMU::SwitchLoRomBank(byte value)
     SwapOutRomBank(bank);
 }
 
-void MMU::SwitchHiRomBank(byte value)
+void MMU::SwitchHiRomBank(uint8_t value)
 {
     // Note: this is only used for MBC1
 
@@ -239,7 +239,7 @@ void MMU::SwitchHiRomBank(byte value)
     SwapOutRomBank(bank);
 }
 
-void MMU::SwitchRamBank(byte value)
+void MMU::SwitchRamBank(uint8_t value)
 {
     // Note: this is only used for MBC1
 
@@ -275,15 +275,15 @@ void MMU::SwapOutRomBank(int bank)
 
     // Swap out the switchable bank with the bank specified
     currentRomBank = bank;
-    memcpy(&memory[cartridgeRomBankSwitchableOffset], &currentRom->bytes[cartridgeRomBank0Size + (bank * cartridgeRomBankSwitchableSize)], cartridgeRomBankSwitchableSize);
+    memcpy(&memory[cartridgeRomBankSwitchableOffset], &currentRom->uint8_ts[cartridgeRomBank0Size + (bank * cartridgeRomBankSwitchableSize)], cartridgeRomBankSwitchableSize);
 }
 
-void MMU::SwitchRomRamMode(byte value)
+void MMU::SwitchRomRamMode(uint8_t value)
 {
     RomBankEnabled = value & 0x01? false : true;
     if (RomBankEnabled)
     {
-        byte newRamBank = 0;
+        uint8_t newRamBank = 0;
         SwitchRamBank(newRamBank);
     }
 }

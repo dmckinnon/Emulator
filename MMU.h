@@ -15,7 +15,7 @@ public:
 
     void UnmapSystemRom();
 
-    inline byte ReadFromAddress(uint16_t address)
+    inline uint8_t ReadFromAddress(uint16_t address)
     {
         if (useSystemRom && address < cartridgeHeaderOffset)
         {
@@ -24,7 +24,7 @@ public:
         return memory[address];
     }
 
-    inline void WriteToAddress(uint16_t address, byte value)
+    inline void WriteToAddress(uint16_t address, uint8_t value)
     {
         // Writing to the ROM is interpreted as a ROM/RAM bank switch
         // so we handle this. The logic is intricate.
@@ -54,8 +54,8 @@ public:
     // so we implement it as such
     inline void WriteToAddress(uint16_t address, uint16_t value)
     {
-        WriteToAddress(address, (byte)(value & 0xFF));
-        WriteToAddress(address + 1, (byte)(value >> 8));
+        WriteToAddress(address, (uint8_t)(value & 0xFF));
+        WriteToAddress(address + 1, (uint8_t)(value >> 8));
     }
 
     // offsets and bounds
@@ -92,33 +92,37 @@ public:
     static const int interruptEnableRegisterAddress = 0xFFFF;
 
     // Interrupt bits
-    static const byte vblankInterruptBit = 0x1;
+    static const uint8_t vblankInterruptBit = 0x1;
     static const uint16_t VBlankISRAddress = 0x0040;
-    static const byte lcdInterruptBit = 0x2;
+    static const uint8_t lcdInterruptBit = 0x2;
     static const uint16_t LCDISRAddress = 0x0048;
-    static const byte timerInterruptBit = 0x4;
-    static const byte joypadInterruptBit = 0x8;
+    static const uint8_t timerInterruptBit = 0x4;
+    static const uint16_t TimerISRAddress = 0x0050;
+    static const uint8_t serialInterruptBit = 0x8;
+    static const uint16_t SerialISRAddress = 0x0058;
+    static const uint8_t joypadInterruptBit = 0x16;
+    static const uint16_t JoypadISRAddress = 0x0060;
 
     // Timer registers and bits
     static const int DIVRegisterAddress = 0xFF04;
     static const int TIMARegisterAddress = 0xFF05;
     static const int TMARegisterAddress = 0xFF06;
     static const int TMCRegisterAddress = 0xFF07;
-    static const byte ClockEnableBit = 0x4;
+    static const uint8_t ClockEnableBit = 0x4;
     
 
     // Special function just for writing to clock divider
-    inline void WriteToDivRegister_Allowed(byte val)
+    inline void WriteToDivRegister_Allowed(uint8_t val)
     {
         memory[DIVRegisterAddress] = val;
     }
 
 
 private:
-    byte memory[MEMORY_SIZE];
+    uint8_t memory[MEMORY_SIZE];
 
     bool useSystemRom;
-    byte systemRom[systemRomSize];
+    uint8_t systemRom[systemRomSize];
 
     std::shared_ptr<Rom> currentRom;
 
@@ -131,13 +135,13 @@ private:
     int numRamBanks = 1;
     bool RAMBankEnabled = false;
     static constexpr int ramBankAddress = 0x148;
-    byte* allRam = nullptr;
+    uint8_t* allRam = nullptr;
 
-    void EnableRamBank(uint16_t address, byte value);
-    void SwitchLoRomBank(byte value);
-    void SwitchHiRomBank(byte value);
-    void SwitchRamBank(byte value);
-    void SwitchRomRamMode(byte value);
+    void EnableRamBank(uint16_t address, uint8_t value);
+    void SwitchLoRomBank(uint8_t value);
+    void SwitchHiRomBank(uint8_t value);
+    void SwitchRamBank(uint8_t value);
+    void SwitchRomRamMode(uint8_t value);
     void SwapOutRomBank(int bank);
-    void HandleBanking(uint16_t address, byte value);
+    void HandleBanking(uint16_t address, uint8_t value);
 };

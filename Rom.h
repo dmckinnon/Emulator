@@ -4,13 +4,13 @@
 #include <memory>
 
 // 8 Mb
-#define MAX_ROM_SIZE_BYTES (8*1024*1024)
+#define MAX_ROM_SIZE_uint8_tS (8*1024*1024)
 
-typedef unsigned char byte;
+//typedef unsigned char uint8_t;
 
 struct Rom
 {
-    byte bytes[MAX_ROM_SIZE_BYTES];
+    uint8_t uint8_ts[MAX_ROM_SIZE_uint8_tS];
     unsigned int size;
 };
 

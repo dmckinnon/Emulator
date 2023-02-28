@@ -43,7 +43,7 @@ private:
     union Registers
     {
         std::uint16_t shorts[6];
-        std::uint8_t bytes[12];
+        std::uint8_t uint8_ts[12];
     };
 
     // Register flags
@@ -61,6 +61,9 @@ private:
 
     std::shared_ptr<MMU> mmu;
 
+    // EI, DI, and RETI change interrupts on the cycle after
+    bool enableInterruptsNextCycle = false;
+    bool disableInterruptsNextCycle = false;
     bool interruptsAreEnabled = false;
 
     void InitialiseRegisters();
@@ -78,7 +81,7 @@ private:
 
     inline int GetTmcFrequency()
     {
-        byte f = mmu->ReadFromAddress(mmu::TMCRegisterAddress);
+        uint8_t f = mmu->ReadFromAddress(MMU::TMCRegisterAddress);
         switch (f)
         {
             case 0:
@@ -97,16 +100,16 @@ private:
         return 0;
     }
 
-    inline void Add8(byte A, byte B, byte& C);
-    inline void Sub8(byte A, byte B, byte& C);
-    inline void AddC8(byte A, byte B, byte& C);
-    inline void SubC8(byte A, byte B, byte& C);
-    inline void And8(byte A, byte B, byte& C);
-    inline void Or8(byte A, byte B, byte& C);
-    inline void Xor8(byte A, byte B, byte& C);
-    inline void Cp8(byte A, byte B);
-    inline void Inc8(byte& A);
-    inline void Dec8(byte& A);
+    inline void Add8(uint8_t A, uint8_t B, uint8_t& C);
+    inline void Sub8(uint8_t A, uint8_t B, uint8_t& C);
+    inline void AddC8(uint8_t A, uint8_t B, uint8_t& C);
+    inline void SubC8(uint8_t A, uint8_t B, uint8_t& C);
+    inline void And8(uint8_t A, uint8_t B, uint8_t& C);
+    inline void Or8(uint8_t A, uint8_t B, uint8_t& C);
+    inline void Xor8(uint8_t A, uint8_t B, uint8_t& C);
+    inline void Cp8(uint8_t A, uint8_t B);
+    inline void Inc8(uint8_t& A);
+    inline void Dec8(uint8_t& A);
 
     inline void Add16(uint16_t& A, uint16_t& B, uint16_t& C);
 };

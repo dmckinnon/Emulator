@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
     // graphics??
     // automated testing
 
-    // load rom from file to byte buffer
+    // load rom from file to uint8_t buffer
     std::shared_ptr<Rom> rom = make_shared<Rom>();
     if (!LoadRomFromFile(parameters.romFilename, rom))
     {
