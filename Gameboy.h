@@ -3,6 +3,7 @@
 #include "Rom.h"
 #include "MMU.h"
 #include "CPU.h"
+#include "Display.h"
 
 // 8 KiB of RAM
 #define GAMEBOY_SRAM 8192
@@ -24,6 +25,7 @@ public:
 
 private:
     CPU cpu;
+    Display display;
 
     int clockSpeed = GAMEBOY_CLOCK_HZ;
 

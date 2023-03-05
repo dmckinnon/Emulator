@@ -29,6 +29,23 @@ CPU::~CPU()
 
 }
 
+void CPU::SetVBlankInterrupt()
+{
+    // TODO
+    //mmu->WriteAddress();
+}
+
+void CPU::SetLCDStatInterrupt()
+{
+    // TODO
+}
+
+// This takes the input format of the 0xFF00 register
+void CPU::SetJoypadInterrupt(uint8_t joypadRegister)
+{
+    (void)joypadRegister;
+}
+
 void CPU::InitialiseRegisters()
 {
     // The stack starts at 0xFFFE and grows down
@@ -2478,4 +2495,6 @@ int CPU::ExecuteNextInstruction()
         // reset the PC to the start of the next ROM bank
         registers.shorts[PC] ++;
     }
+
+    return mCycles;
 }

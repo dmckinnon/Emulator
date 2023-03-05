@@ -13,6 +13,11 @@ public:
 
     void Execute();
 
+    void SetVBlankInterrupt();
+    void SetLCDStatInterrupt();
+    // This takes the input format of the 0xFF00 register
+    void SetJoypadInterrupt(uint8_t joypadRegister);
+
 private:
     enum SixteenBitRegisters
     {
