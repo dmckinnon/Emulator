@@ -1,5 +1,7 @@
 #include "Display.h"
 
+#include <iostream>
+
 #define PIXELS_PER_PIXEL 4
 
 Display::Display(
@@ -9,7 +11,9 @@ Display::Display(
     SetVBlankInterrupt(setVBlankInterrupt),
     SetLCDStatInterrupt(setLCDStatInterrupt),
     SetJoypadInterrupt(setJoypadInterrupt)
+    //curFrame("/home/dave/Emulator/blank.png")
 {
+    //gtk_init(0, nullptr);
     // make image blank
     for (int i = 0; i < GAMEBOY_HEIGHT; ++i)
     {
@@ -38,34 +42,7 @@ void Display::FrameThreadProcThunk(void* context)
 
 void Display::WindowThreadProc()
 {
-    auto app = Gtk::Application::create("example");
-
-    auto window = Gtk::Window();
-    // cannot resize window
-    window.set_resizable(false);
-
-    // set window size to 160x144 x 4 = 640x576
-    window.set_default_size(GAMEBOY_WIDTH*PIXELS_PER_PIXEL, GAMEBOY_HEIGHT*PIXELS_PER_PIXEL);
-
-    {
-        // get image mutex and set image
-        std::lock_guard<std::mutex> lk(imageMutex);
-        const Gdk::Pixbuf::SlotDestroyData d;
-        auto img = Gdk::Pixbuf::create_from_data(
-            (const unsigned char *)frameBuffer,
-            Gdk::COLORSPACE_RGB,
-            false,
-            8,
-            GAMEBOY_WIDTH,
-            GAMEBOY_HEIGHT,
-            (int) 3,
-            d); // what should stride be?
-        curFrame.set(img);
-    }
-
-    window.add(curFrame);
-
-    app->run(window); 
+    
 }
 
 void Display::FrameThreadProc()

@@ -1,9 +1,8 @@
-#include <gtkmm.h>
-#include <gtkmm/window.h>
-#include <gtkmm/image.h>
+
 #include <functional>
 #include <thread>
 #include <mutex>
+#include <opencv2/opencv.hpp>
 
 #define GAMEBOY_WIDTH 160
 #define GAMEBOY_HEIGHT 144
@@ -43,7 +42,6 @@ private:
 
     // Image to show in window and update at frame rate
     uint8_t frameBuffer[GAMEBOY_HEIGHT][GAMEBOY_WIDTH*3];
-    Gtk::Image curFrame;
     std::mutex imageMutex;
 
     // main display thread
