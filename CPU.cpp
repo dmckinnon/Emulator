@@ -31,19 +31,26 @@ CPU::~CPU()
 
 void CPU::SetVBlankInterrupt()
 {
-    // TODO
-    //mmu->WriteAddress();
+    uint8_t interrupts = mmu->ReadFromAddress(MMU::interruptFlagRegisterAddress);
+    mmu->WriteToAddress(MMU::interruptFlagRegisterAddress, (uint8_t)(interrupts | MMU::vblankInterruptBit));
 }
 
 void CPU::SetLCDStatInterrupt()
 {
-    // TODO
+    uint8_t interrupts = mmu->ReadFromAddress(MMU::interruptFlagRegisterAddress);
+    mmu->WriteToAddress(MMU::interruptFlagRegisterAddress, (uint8_t)(interrupts | MMU::lcdInterruptBit));
 }
 
 // This takes the input format of the 0xFF00 register
 void CPU::SetJoypadInterrupt(uint8_t joypadRegister)
 {
-    (void)joypadRegister;
+    // Set the value for which IO channel is raised
+    uint8_t ioReg = mmu->ReadFromAddress(MMU::ioRegistersOffset);
+    mmu->WriteToAddress(MMU::ioRegistersOffset, (uint8_t)(ioReg | joypadRegister));
+
+    // Set the IO interrupt flag
+    uint8_t interrupts = mmu->ReadFromAddress(MMU::interruptFlagRegisterAddress);
+    mmu->WriteToAddress(MMU::interruptFlagRegisterAddress, (uint8_t)(interrupts | MMU::joypadInterruptBit));
 }
 
 void CPU::InitialiseRegisters()

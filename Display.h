@@ -1,7 +1,12 @@
 #include <gtkmm.h>
 #include <gtkmm/window.h>
+#include <gtkmm/image.h>
 #include <functional>
 #include <thread>
+#include <mutex>
+
+#define GAMEBOY_WIDTH 160
+#define GAMEBOY_HEIGHT 144
 
 /*
     This class is essentially the video chip and the display.
@@ -25,7 +30,8 @@ public:
         std::function<void(uint8_t)> setJoypadInterrupt);
     ~Display();
 
-    static void ThreadProcThunk(void* context);
+    static void WindowThreadProcThunk(void* context);
+    static void FrameThreadProcThunk(void* context);
 
 private:
     // need key press handlers
@@ -35,7 +41,14 @@ private:
     std::function<void()> SetLCDStatInterrupt;
     std::function<void(uint8_t)> SetJoypadInterrupt;
 
+    // Image to show in window and update at frame rate
+    uint8_t frameBuffer[GAMEBOY_HEIGHT][GAMEBOY_WIDTH*3];
+    Gtk::Image curFrame;
+    std::mutex imageMutex;
+
     // main display thread
-    std::thread displayThread;
-    void ThreadProc();
+    std::thread windowThread;
+    std::thread frameUpdateThread;
+    void WindowThreadProc();
+    void FrameThreadProc();
 };
