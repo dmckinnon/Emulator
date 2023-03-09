@@ -287,3 +287,11 @@ void MMU::SwitchRomRamMode(uint8_t value)
         SwitchRamBank(newRamBank);
     }
 }
+
+void DoDMATransfer()
+{
+    uint16_t address = memory[DMARegisterAddress] << 8;
+    // copy 160 bytes from address to OAM
+    std::lock_guard<std::mutex> lock(oamMutex);
+    memcpy(memory+address, memory+oamOffset, oamSize);
+}

@@ -1,5 +1,6 @@
 #pragma once
 #include "Rom.h"
+#include <mutex>
 
 #define MEMORY_SIZE 0xFFFF
 
@@ -40,11 +41,19 @@ public:
             memory[address - echoRamOffset + cartridgeRamOffset] = value;
         }
 
-        // Writing to the clock divider register resets it, regardless of value
-        // TODO
+        // Writing to the clock divider register or scanline counter register resets it, regardless of value
+        // TODO something?
         if (address == DIVRegisterAddress || address == ScanLineCounterAddress)
         {
             value = 0;
+        }
+
+        // If we write to DMA register, capture and cause a DMA transfer
+        if (address == DMARegisterAddress)
+        {
+            memory[address] = value;
+            DoDMATransfer(value);
+            return;
         }
 
         memory[address] = value;
@@ -115,6 +124,9 @@ public:
     static const uint16_t LCDStatusAddress = 0xFF41;
     static const uint16_t LCDControlAddress = 0xFF40;
     static const uint8_t LCDEnableBit = 0x80;
+
+    // DMA register
+    static const uint16_t DMARegisterAddress = 0xFF46;
     
 
     // Special function just for writing to clock divider
@@ -155,4 +167,7 @@ private:
     void SwitchRomRamMode(uint8_t value);
     void SwapOutRomBank(int bank);
     void HandleBanking(uint16_t address, uint8_t value);
+
+    std::mutex oamMutex;
+    void DoDMATransfer();
 };
