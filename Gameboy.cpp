@@ -8,6 +8,7 @@ Gameboy::Gameboy(std::shared_ptr<Rom> systemRom) :
     mmu(std::make_shared<MMU>(*systemRom)),
     cpu(mmu),
     display(
+        mmu,
         // Lambda to set VBLANK interrupt in CPU
         [this](){
             this->cpu.SetVBlankInterrupt();

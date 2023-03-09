@@ -42,7 +42,7 @@ public:
 
         // Writing to the clock divider register resets it, regardless of value
         // TODO
-        if (address == DIVRegisterAddress)
+        if (address == DIVRegisterAddress || address == ScanLineCounterAddress)
         {
             value = 0;
         }
@@ -109,12 +109,23 @@ public:
     static const int TMARegisterAddress = 0xFF06;
     static const int TMCRegisterAddress = 0xFF07;
     static const uint8_t ClockEnableBit = 0x4;
+
+    // Display addresses
+    static const uint16_t ScanLineCounterAddress = 0xFF44;
+    static const uint16_t LCDStatusAddress = 0xFF41;
+    static const uint16_t LCDControlAddress = 0xFF40;
+    static const uint8_t LCDEnableBit = 0x80;
     
 
     // Special function just for writing to clock divider
     inline void WriteToDivRegister_Allowed(uint8_t val)
     {
         memory[DIVRegisterAddress] = val;
+    }
+
+    inline void WriteToScanlineCounter_Allowed(uint8_t val)
+    {
+        memory[ScanLineCounterAddress] = val;
     }
 
 
