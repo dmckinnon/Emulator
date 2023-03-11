@@ -24,12 +24,13 @@ public:
     bool Run();
 
 private:
+    std::shared_ptr<MMU> mmu;
     CPU cpu;
     Display display;
 
     int clockSpeed = GAMEBOY_CLOCK_HZ;
 
-    std::shared_ptr<MMU> mmu;
+    
 
     // some graphics nonsense
 
