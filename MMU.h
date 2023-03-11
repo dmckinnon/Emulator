@@ -48,11 +48,15 @@ public:
             value = 0;
         }
 
+        // Lock access to OAM and VRAM so that only one process can access at once
+        // if addreess is VRAM or OAM
+        // get mutex
+
         // If we write to DMA register, capture and cause a DMA transfer
         if (address == DMARegisterAddress)
         {
             memory[address] = value;
-            DoDMATransfer(value);
+            DoDMATransfer();
             return;
         }
 
@@ -121,9 +125,16 @@ public:
 
     // Display addresses
     static const uint16_t ScanLineCounterAddress = 0xFF44;
+    static const uint16_t DesiredScanlineRegisterAddress = 0xFF45;
     static const uint16_t LCDStatusAddress = 0xFF41;
     static const uint16_t LCDControlAddress = 0xFF40;
-    static const uint8_t LCDEnableBit = 0x80;
+    static const uint16_t BGScrollYAddress = 0xFF42;
+    static const uint16_t BGScrollXAddress = 0xFF43;
+    static const uint16_t WindowYAddress = 0xFF4A;
+    static const uint16_t WindowXAddress = 0xFF4B;
+    static const uint16_t BackgroundColourPaletteAddress = 0xFF47;
+    static const uint16_t SpriteColurPaletteAddress0 = 0xFF48;
+    static const uint16_t SpriteColurPaletteAddress1 = 0xFF49;
 
     // DMA register
     static const uint16_t DMARegisterAddress = 0xFF46;

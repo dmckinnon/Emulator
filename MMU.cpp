@@ -288,7 +288,7 @@ void MMU::SwitchRomRamMode(uint8_t value)
     }
 }
 
-void DoDMATransfer()
+void MMU::DoDMATransfer()
 {
     uint16_t address = memory[DMARegisterAddress] << 8;
     // copy 160 bytes from address to OAM

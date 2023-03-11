@@ -3,6 +3,9 @@
 #include <thread>
 #include <mutex>
 #include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/highgui.hpp>
 #include "MMU.h"
 
 #define GAMEBOY_WIDTH 160
@@ -47,7 +50,9 @@ private:
     std::shared_ptr<MMU> mmu;
 
     // Image to show in window and update at frame rate
-    uint8_t frameBuffer[GAMEBOY_HEIGHT][GAMEBOY_WIDTH*3];
+    //uint8_t frameBuffer[GAMEBOY_HEIGHT][GAMEBOY_WIDTH];
+    // opencv image
+    cv::Mat frameBuffer;
     std::mutex imageMutex;
 
     // LCD status vars
@@ -56,6 +61,13 @@ private:
     static const uint8_t SearchingSpriteAttrsMode = 0x02;
     static const uint8_t XferDataToLcdMode = 0x03; 
     static const uint8_t LCDModeMask = 0xFC;
+    static const uint8_t CoincidenceBit = 0x04;
+
+    // LCD Stat internal interrupt vars
+    static const uint8_t HBlankInternalInterruptBit = 0x08;
+    static const uint8_t VBlankInternalInterruptBit = 0x10;
+    static const uint8_t SpriteInternalInterruptBit = 0x20;
+    static const uint8_t CoincidenceInternalInterruptBit = 0x40;
 
     // Scanline states to set mode
     static const uint8_t VisibleScanlines = 144;
@@ -66,11 +78,23 @@ private:
     static const uint16_t CyclesForMode2 = 80;
     static const uint16_t CyclesForMode3 = 172;
 
+    // Control register bits
+    static const uint8_t LCDEnableBit = 0x80;
+    static const uint8_t WindowTileMapBit = 0x40; // determines range of tile map
+    static const uint8_t WindowEnableBit = 0x20;
+    static const uint8_t BgWindowTilesetBit = 0x10; // determines range of tileset
+    static const uint8_t BgTileMapBit = 0x08; // determines range of background map
+    static const uint8_t SpriteSizeBit = 0x04; // 8x8 or 16x16
+    static const uint8_t SpritesEnabledBit = 0x02;
+    static const uint8_t BgEnabledBit = 0x01; // disabled background is white/no colour
+
     // main display thread
     std::thread windowThread;
     std::thread frameUpdateThread;
     void WindowThreadProc();
     void FrameThreadProc();
+
+    // need a mutex for accessing OAM and VRAM during mode 0 and 1, but not mode 3
 
     void UpdateLCDStatus();
 };

@@ -21,6 +21,7 @@ Parameters ParseArgs(int argc, char* argv[])
         {
             p.romFilename = argv[++i];
         }
+        
         // more args
         /*else if ()
         {
@@ -68,7 +69,7 @@ int main(int argc, char* argv[])
     // automated testing
 
     // load rom from file to uint8_t buffer
-    std::shared_ptr<Rom> rom = make_shared<Rom>();
+    std::shared_ptr<Rom> rom = make_shared<Rom>(); 
     if (!LoadRomFromFile(parameters.romFilename, rom))
     {
         cerr << "Could not load ROM from " << parameters.romFilename << std::endl;
