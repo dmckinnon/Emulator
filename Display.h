@@ -36,7 +36,13 @@ public:
 
     bool IsLCDEnabled();
 
-    static void WindowThreadProcThunk(void* context);
+    void StartDisplay();
+
+    bool Displaying() 
+    {
+        return displaying;
+    }
+
     static void FrameThreadProcThunk(void* context);
 
 private:
@@ -52,8 +58,9 @@ private:
     // Image to show in window and update at frame rate
     //uint8_t frameBuffer[GAMEBOY_HEIGHT][GAMEBOY_WIDTH];
     // opencv image
-    cv::Mat frameBuffer;
+    //cv::Mat frameBuffer;
     std::mutex imageMutex;
+    bool displaying;
 
     // LCD status vars
     static const uint8_t HBlankMode = 0x00;
@@ -91,7 +98,6 @@ private:
     // main display thread
     std::thread windowThread;
     std::thread frameUpdateThread;
-    void WindowThreadProc();
     void FrameThreadProc();
 
     // need a mutex for accessing OAM and VRAM during mode 0 and 1, but not mode 3

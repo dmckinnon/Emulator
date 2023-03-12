@@ -18,16 +18,16 @@ Display::Display(
     scanlineCycleCounter(0)
     //curFrame("/home/dave/Emulator/blank.png")
 {
-    frameBuffer = cv::Mat(cv::Size(GAMEBOY_HEIGHT, GAMEBOY_WIDTH), CV_8UC1, cv::Scalar(0));
-
-    // Start display thread
-    windowThread = std::thread(Display::WindowThreadProcThunk, this);
+    
+    displaying = false;
 
     // TODO when LCD is disabled set mode to 1
 }
 
 Display::~Display()
 {
+    if (frameUpdateThread.joinable())
+        frameUpdateThread.join();
 }
 
 bool Display::IsLCDEnabled()
@@ -35,10 +35,9 @@ bool Display::IsLCDEnabled()
     return mmu->ReadFromAddress(MMU::LCDControlAddress) & LCDEnableBit;
 }
 
-void Display::WindowThreadProcThunk(void* context)
+void Display::StartDisplay()
 {
-    Display* d = (Display*)context;
-    d->WindowThreadProc();
+    frameUpdateThread = std::thread(FrameThreadProcThunk, this);
 }
 
 void Display::FrameThreadProcThunk(void* context)
@@ -47,21 +46,22 @@ void Display::FrameThreadProcThunk(void* context)
     d->FrameThreadProc();
 }
 
-void Display::WindowThreadProc()
-{
-    
-}
-
 void Display::FrameThreadProc()
 {
     using namespace std::chrono_literals;
+    auto frameBuffer = cv::Mat(cv::Size(GAMEBOY_HEIGHT, GAMEBOY_WIDTH), CV_8UC1, cv::Scalar(0));
+    displaying = true;
     while (true)
     {
         if (!IsLCDEnabled())
         {
             // wait a frame
-            continue;
+            //continue;
         }
+
+        // use a keypress to break out of here
+        char key = (char) cv::waitKey(30);   // explicit cast
+        if (key == 27) break; 
 
         // update image
         // simple: draw each scanline based on whether background or sprites or window are enabled
@@ -77,6 +77,7 @@ void Display::FrameThreadProc()
         // vblank is mode 1
         // when mode changes to 0, 1, 2 then this is LCD interrupt
     }
+    displaying = false;
 }
 
 void Display::UpdateLCDStatus()

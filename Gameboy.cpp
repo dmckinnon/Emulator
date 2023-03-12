@@ -30,17 +30,12 @@ Gameboy::~Gameboy()
 {
     // join each of the cpu and display threads and destroy them
 
-
-    // destroy the CPU first as it has pointers to memory
-    cpu.~CPU();
-
     // mmu will destroy itself
 }
 
 bool Gameboy::LoadRom(std::shared_ptr<Rom> rom)
 {
-    // If a rom is already loaded, fail
-    if (rom != nullptr)
+    if (rom == nullptr)
     {
         return false;
     }
@@ -52,27 +47,29 @@ bool Gameboy::LoadRom(std::shared_ptr<Rom> rom)
 
 bool Gameboy::Run()
 {
+    using namespace std::chrono_literals;
     // Create the display thread and CPU thread
     //auto cpuThread = std::thread([this](){cpu.ExecuteCode(rom);});
 
     // cpu thread
-    auto cpuThread = std::thread([&](){
-        cpu.ExecuteCode();
-    });
-    
-    
-
-    // display thread
-    /*auto displayThread = std::thread([&](){
-
-        auto app = Gtk::Application::create("example");
-
-        app->run(display);
+    auto cpuThread = std::thread([this](){
+        this->cpu.ExecuteCode();
     });
 
-    displayThread.join();*/
+    display.StartDisplay();
 
-    cpuThread.join();
+    // wait for both threads to finish
+    while (display.Displaying() && cpu.Executing())
+    {
+        std::this_thread::sleep_for(1000ms);
+    }
+
+    if (cpuThread.joinable())
+    {
+        cpuThread.join();
+    }
+
+    // display 
 
     return true;
 }

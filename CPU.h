@@ -13,6 +13,11 @@ public:
 
     void Execute();
 
+    bool Executing() 
+    {
+        return executing;
+    }
+
     void SetVBlankInterrupt();
     void SetLCDStatInterrupt();
     // This takes the input format of the 0xFF00 register
@@ -70,6 +75,8 @@ private:
     bool enableInterruptsNextCycle = false;
     bool disableInterruptsNextCycle = false;
     bool interruptsAreEnabled = false;
+
+    bool executing;
 
     void InitialiseRegisters();
 

@@ -8,7 +8,7 @@ using namespace std;
 struct Parameters
 {
     // default to make things easier for me
-    string romFilename = "/home/dmckinnon/Emulator/math.gb";
+    string romFilename = "/home/dave/Emulator/cpu_instrs.gb";
 
 };
 
@@ -69,22 +69,26 @@ int main(int argc, char* argv[])
     // automated testing
 
     // load rom from file to uint8_t buffer
-    std::shared_ptr<Rom> rom = make_shared<Rom>(); 
-    if (!LoadRomFromFile(parameters.romFilename, rom))
+    std::shared_ptr<Rom> systemRom = make_shared<Rom>(); 
+    std::shared_ptr<Rom> gameRom = make_shared<Rom>(); 
+    if (!LoadRomFromFile(parameters.romFilename, gameRom))
     {
-        cerr << "Could not load ROM from " << parameters.romFilename << std::endl;
+        cerr << "Could not load game ROM from " << parameters.romFilename << std::endl;
+    }
+    if (!LoadRomFromFile("/home/dave/Emulator/systemRom.bin", systemRom))
+    {
+        cerr << "Could not load system ROM from " << "/home/dave/Emulator/systemRom.bin" << std::endl;
     }
 
     // go into ROM and start running instructions
 
-    std::cout << "Size of ROM: " << rom->size << std::endl;
+    std::cout << "Size of game ROM: " << gameRom->size << std::endl;
 
-    Gameboy g = Gameboy(rom);
-
-    g.Run();
-
-    // get GUI?
-
+    {
+        Gameboy g = Gameboy(systemRom);
+        g.LoadRom(gameRom);
+        g.Run();
+    }
 
     return 0;
 }

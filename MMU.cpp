@@ -80,6 +80,10 @@ MMU::MMU(Rom& systemRom)
 
 MMU::~MMU()
 {
+    if (allRam != nullptr)
+    {
+        delete allRam;
+    }
 }
 
 void MMU::LoadRomToMemory(std::shared_ptr<Rom> rom)
@@ -132,9 +136,9 @@ void MMU::LoadRomToMemory(std::shared_ptr<Rom> rom)
 
 void MMU::UnmapSystemRom()
 {
+    //if (allRam != nullptr && useSystemRom)
+    //    delete allRam;
     useSystemRom = false;
-    if (allRam != nullptr)
-        delete allRam;
 }
 
 void MMU::HandleBanking(uint16_t address, uint8_t value)

@@ -12,6 +12,7 @@ CPU::CPU()
 {
     clockCounter = 0;
     clockDivider = 0;
+    executing = false;
     InitialiseRegisters();
 }
 
@@ -20,6 +21,7 @@ CPU::CPU(std::shared_ptr<MMU> mmu)
     this->mmu = mmu;
     clockCounter = 0;
     clockDivider = 0;
+    executing = false;
     
     InitialiseRegisters();
 }
@@ -185,6 +187,9 @@ void CPU::CheckAndMaybeHandleInterrupts()
 
 void CPU::ExecuteCode()
 {
+    executing = true;
+    bool stillInSystemRom = true;
+
     if (!mmu)
     {
         return;
@@ -195,9 +200,11 @@ void CPU::ExecuteCode()
         // If PC has reached 0x100, then cartridge is valid;
         // unmap system ROM and use cartridge ROM from now on.
         // TODO: only do this once
-        if (registers.shorts[PC] >= 0x100)
+        if (registers.shorts[PC] >= 0x100 && stillInSystemRom)
+        {
             mmu->UnmapSystemRom();
-
+            stillInSystemRom = false;
+        }
 
         // The loop logic is:
         // Execute next instruction and get number of cycles it took
@@ -241,7 +248,8 @@ void CPU::ExecuteCode()
         }
     }
 
-    
+    // end execution
+    executing = false;
 }
 
 
