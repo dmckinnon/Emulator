@@ -2,7 +2,7 @@
 #include "Rom.h"
 #include <mutex>
 
-#define MEMORY_SIZE 0xFFFF
+#define MEMORY_SIZE 0x10000
 
 class MMU
 {

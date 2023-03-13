@@ -9,7 +9,7 @@ MMU::MMU(Rom& systemRom)
     memset(memory, 0, sizeof(memory));
 
     // Start with system ROM mapped and load default system ROM to it
-    useSystemRom = true;
+    this->useSystemRom = true;
     memcpy(&this->systemRom, systemRom.uint8_ts, systemRom.size);
 
     // set up registers. See 
