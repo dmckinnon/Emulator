@@ -2497,11 +2497,11 @@ int CPU::ExecuteNextInstruction()
     printf("instruction: %x\n", instruction);
 
         // Print all registers for debug
-        printf("A: %x\tB: %x\tC: %x\tD: %x\nE: %x\tH: %x\tL: %x\nS: %x\tP: %x\nF: %x\n",
+        printf("A: %x\tB: %x\tC: %x\tD: %x\nE: %x\tH: %x\tL: %x\nS: %x\tP: %x\nF: %x\tPC: %x\n",
                 registers.uint8_ts[A], registers.uint8_ts[B], registers.uint8_ts[C], registers.uint8_ts[D], 
                 registers.uint8_ts[E], registers.uint8_ts[H], registers.uint8_ts[L], 
                 registers.uint8_ts[S], registers.uint8_ts[P], 
-                registers.uint8_ts[F]);
+                registers.uint8_ts[F], registers.shorts[PC]);
 
     // Update PC if a jump instruction has not been executed
     if (!pcChanged)

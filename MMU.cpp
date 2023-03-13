@@ -102,7 +102,9 @@ void MMU::LoadRomToMemory(std::shared_ptr<Rom> rom)
     else
     {
         memcpy(&memory[cartridgeRomBank0Offset], rom->uint8_ts, cartridgeRomBank0Size);
-        memcpy(&memory[cartridgeRomBankSwitchableOffset], &rom->uint8_ts[cartridgeRomBank0Size], rom->size - cartridgeRomBank0Size);
+        // Write at most one bank, but less if ROM is smaller
+        uint16_t writeSize = std::min((unsigned int)cartridgeRomBankSwitchableSize, rom->size);
+        memcpy(&memory[cartridgeRomBankSwitchableOffset], &rom->uint8_ts[cartridgeRomBank0Size], writeSize);
     }
 
     // Determine which MBC the game uses

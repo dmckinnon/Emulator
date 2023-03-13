@@ -7,7 +7,7 @@
 #define PIXELS_PER_PIXEL 4
 
 Display::Display(
-    std::shared_ptr<MMU> mmu,
+    std::shared_ptr<MMU> memMgmntUnit,
     std::function<void()> setVBlankInterrupt,
     std::function<void()> setLCDStatInterrupt,
     std::function<void(uint8_t)> setJoypadInterrupt) :
