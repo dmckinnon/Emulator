@@ -94,6 +94,7 @@ private:
     static const uint8_t SpriteSizeBit = 0x04; // 8x8 or 16x16
     static const uint8_t SpritesEnabledBit = 0x02;
     static const uint8_t BgEnabledBit = 0x01; // disabled background is white/no colour
+    static const uint16_t tileSizeInMemory = 16;
 
     // main display thread
     std::thread windowThread;
@@ -103,4 +104,8 @@ private:
     // need a mutex for accessing OAM and VRAM during mode 0 and 1, but not mode 3
 
     void UpdateLCDStatus();
+    void DrawScanLine(cv::Mat& buffer, uint8_t curScanline);
+    void RenderTiles(cv::Mat& buffer, uint8_t controlReg, uint8_t curScanline);
+    void RenderSprites(cv::Mat& buffer, uint8_t controlReg, uint8_t curScanline);
+    uint8_t GetColour(uint8_t colourNum, uint16_t paletteAddress);
 };
