@@ -79,6 +79,7 @@ private:
     // Scanline states to set mode
     static const uint8_t VisibleScanlines = 144;
     static const uint8_t MaxScanlines = 153;
+    static const uint8_t MaxCols = 160;
 
     uint16_t scanlineCycleCounter;
     static const uint16_t MaxScanlineCount = 456;
@@ -95,6 +96,20 @@ private:
     static const uint8_t SpritesEnabledBit = 0x02;
     static const uint8_t BgEnabledBit = 0x01; // disabled background is white/no colour
     static const uint16_t tileSizeInMemory = 16;
+
+    // Sprites
+    static const uint8_t NumSprites = 40;
+    static const uint8_t SpriteBgPriorityBit = 0x80;
+    static const uint8_t SpriteYFlipBit = 0x40;
+    static const uint8_t SpriteXFlipBit = 0x20;
+    static const uint8_t SpritePaletteNumberBit = 0x10;
+
+    // colours
+    static const uint8_t WHITE = 0xFF;
+    static const uint8_t LIGHT_GRAY = 0xCC;
+    static const uint8_t DARK_GRAY = 0x77;
+    static const uint8_t BLACK = 0x00;
+
 
     // main display thread
     std::thread windowThread;

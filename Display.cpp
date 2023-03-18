@@ -360,7 +360,80 @@ void Display::RenderTiles(cv::Mat& buffer, uint8_t controlReg, uint8_t curScanli
 
 void Display::RenderSprites(cv::Mat& buffer, uint8_t controlReg, uint8_t curScanline)
 {
-    
+    // Always draw all 40 sprites. If a sprite is unused, then I suppose it will be off camera
+    // Is there a way we can know asap whether it's worth drawing the sprite?
+    uint16_t spriteAttrTable = MMU::SpriteAttributeTableAddress;
+    for (uint8_t i = 0; i < NumSprites; ++i)
+    {
+        // Get next sprite attribute set
+        uint8_t spriteIndex = i*4;
+        uint8_t yPos = mmu->ReadFromAddress(spriteAttrTable + spriteIndex) - 16;
+        uint8_t xPos = mmu->ReadFromAddress(spriteAttrTable + spriteIndex + 1) - 8;
+        uint8_t tileOffset = mmu->ReadFromAddress(spriteAttrTable + spriteIndex + 2);
+        uint8_t spriteAttributes = mmu->ReadFromAddress(spriteAttrTable + spriteIndex + 3);
+
+        // Sprites can be 8x8 or 8x16
+        int ySize = controlReg & SpriteSizeBit? 16 : 8;
+
+        // we're in the sprite, y-wise
+        if ((curScanline >= yPos) && (curScanline < yPos+ySize))
+        {
+            // get this setup out of the way so we can check xpixel to back out asap
+            bool xFlip = spriteAttributes & SpriteXFlipBit;
+            bool yFlip = spriteAttributes & SpriteYFlipBit;
+        
+            // get scan line relative in sprite
+            uint8_t lineNum = curScanline - yPos;
+            if (yFlip)
+            {
+                lineNum = ySize - lineNum;
+            }
+
+            // Get the colours for the horizontal pixels of the sprite
+            lineNum *= 2;
+            uint16_t dataAddress = MMU::characterRamOffset + tileOffset*16 + lineNum;
+            uint8_t colourLine1 = mmu->ReadFromAddress(dataAddress);
+            uint8_t colourLine2 = mmu->ReadFromAddress(dataAddress + 1);
+
+            // right to left is pixel 7 to 0, and this makes it easy to
+            // get colour data as we can shift the colourLine vars
+            for (int pixel = 0; pixel < 8; ++pixel)
+            {
+                // first check if this pixel is valid
+                int xLoc = xPos + pixel;
+                if (xLoc < 0 || xLoc >= MaxCols)
+                {
+                    continue;
+                }
+
+                uint8_t pixelNum = xFlip? 7-pixel : pixel;
+                uint8_t colourMask = 0x01 << pixelNum;
+                uint8_t colourNumber = colourLine2 & colourMask? 0x2 : 0x0;
+                colourNumber |= (colourLine1 & colourMask? 0x1 : 0x0);
+                uint16_t paletteAddress = spriteAttributes & SpritePaletteNumberBit? MMU::SpriteColurPaletteAddress1 : MMU::SpriteColurPaletteAddress0;
+                uint8_t grayscale = GetColour(colourNumber, paletteAddress);
+
+                // transparent, for sprites
+                if (grayscale == WHITE)
+                {
+                    continue;
+                }
+
+                // are we hiding sprite behind background?
+                if (spriteAttributes & SpriteBgPriorityBit)
+                {
+                    if (buffer.at<uchar>(xLoc, curScanline) == WHITE)
+                    {
+                        buffer.at<uchar>(xLoc, curScanline) = grayscale;
+                    }
+                }
+                else
+                {
+                    buffer.at<uchar>(xLoc, curScanline) = grayscale;
+                }
+            }
+        }
+    }
 }
 
 uint8_t Display::GetColour(uint8_t colourNum, uint16_t paletteAddress)
@@ -403,25 +476,25 @@ uint8_t Display::GetColour(uint8_t colourNum, uint16_t paletteAddress)
         // white
         case 0: 
         {
-            grayscale = 255;
+            grayscale = WHITE;
             break;
         }
         // light gray
         case 1:
         {
-            grayscale = 0xCC;
+            grayscale = LIGHT_GRAY;
             break;
         }
         // dark gray
         case 2:
         {
-            grayscale = 0x77;
+            grayscale = DARK_GRAY;
             break;
         }
         // black
         case 3:
         {
-            grayscale = 0;
+            grayscale = BLACK;
             break;
         }
     }

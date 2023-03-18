@@ -135,6 +135,7 @@ public:
     static const uint16_t BackgroundColourPaletteAddress = 0xFF47;
     static const uint16_t SpriteColurPaletteAddress0 = 0xFF48;
     static const uint16_t SpriteColurPaletteAddress1 = 0xFF49;
+    static const uint16_t SpriteAttributeTableAddress = 0xFE00; 
 
     // DMA register
     static const uint16_t DMARegisterAddress = 0xFF46;
