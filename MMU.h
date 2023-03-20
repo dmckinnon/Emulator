@@ -1,6 +1,7 @@
 #pragma once
 #include "Rom.h"
 #include <mutex>
+#include <semaphore>
 
 #define MEMORY_SIZE 0x10000
 
@@ -27,6 +28,10 @@ public:
 
     inline void WriteToAddress(uint16_t address, uint8_t value)
     {
+        // Semaphore to allow only one writer to memory at a time
+        //writeSemaphore.acquire();
+        //const std::lock_guard<std::mutex> lock(oamMutex);
+
         // Writing to the ROM is interpreted as a ROM/RAM bank switch
         // so we handle this. The logic is intricate.
         if (address < cartridgeRomBankSwitchableOffset + cartridgeRomBankSwitchableSize)
@@ -57,10 +62,12 @@ public:
         {
             memory[address] = value;
             DoDMATransfer();
+            //writeSemaphore.release();
             return;
         }
 
         memory[address] = value;
+       // writeSemaphore.release();
     }
 
     // According to ChatGPT, a 16-bit write functions as two 8-bit writes
@@ -160,6 +167,8 @@ private:
     uint8_t systemRom[systemRomSize];
 
     std::shared_ptr<Rom> currentRom;
+
+    std::counting_semaphore<1> writeSemaphore{1};
 
     int currentRomBank = 1;
     int mbc = 0;

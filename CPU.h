@@ -53,7 +53,7 @@ private:
     union Registers
     {
         std::uint16_t shorts[6];
-        std::uint8_t uint8_ts[12];
+        std::uint8_t bytes[12];
     };
 
     // Register flags
@@ -88,6 +88,7 @@ private:
     // returns number of cycles of execution it took
     // in mCycles, which is 4*clock cycles
     int ExecuteNextInstruction();
+    int ExecutePrefixInstruction(uint8_t instruction);
 
     void CheckAndMaybeHandleInterrupts();
 
@@ -124,4 +125,7 @@ private:
     inline void Dec8(uint8_t& A);
 
     inline void Add16(uint16_t& A, uint16_t& B, uint16_t& C);
+    
+    inline uint8_t GetRegisterFromPrefixIndex(uint8_t reg);
+    int PerformPrefixedRotOperation(uint8_t operation, uint8_t regIndex, bool useHL);
 };

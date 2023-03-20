@@ -285,6 +285,31 @@
 #define ADD_HL_HL   0x29
 #define ADD_HL_SP   0x39
 
+// masks and possible values for prefixed ops
+#define PrefixOperationMask 0xC0
+#define PrefixBitMask 0x38
+#define PrefixRotOperationMask 0x38
+#define PrefixRegisterMask 0x07
+
+// prefixed ops
+#define PrefixRot 0x00
+#define PrefixBit 0x40
+#define PrefixRes 0x80
+#define PrefixSet 0x30
+
+// Rotation ops
+#define PrefixRLC  0
+#define PrefixRRC  1
+#define PrefixRL   2
+#define PrefixRR   3
+#define PrefixSLA  4
+#define PrefixSRA  5
+#define PrefixSWAP 6
+#define PrefixSRL  7
+
+// The register bit from memory
+#define RegisterThatsActuallyMemory 6
+
 // All the things prefixed by CB
 #define RLC_B    0x00
 #define RLC_C    0x01

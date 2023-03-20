@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <string.h>
+#include <thread>
 
 #define CLOCKSPEED 4194304 
 
@@ -146,8 +147,8 @@ void CPU::CheckAndMaybeHandleInterrupts()
     if (whichInterrupt != 0)
     {
         // push PC onto Stack
-        mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC]);
-        mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 1]);
+        mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC]);
+        mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
 
         // disable interrupts
         interruptsAreEnabled = 0;
@@ -187,6 +188,7 @@ void CPU::CheckAndMaybeHandleInterrupts()
 
 void CPU::ExecuteCode()
 {
+    using namespace std::chrono_literals;
     executing = true;
     bool stillInSystemRom = true;
 
@@ -204,6 +206,10 @@ void CPU::ExecuteCode()
         {
             mmu->UnmapSystemRom();
             stillInSystemRom = false;
+            while (true)
+            {
+
+            }
         }
 
         // The loop logic is:
@@ -246,6 +252,8 @@ void CPU::ExecuteCode()
         {
             break;
         }
+
+        std::this_thread::sleep_for(1ms);
     }
 
     // end execution
@@ -258,7 +266,7 @@ inline void CPU::Add8(uint8_t A, uint8_t B, uint8_t& C)
     // check half carry flag:
     if ((((A & 0xf) + (B & 0xf)) & 0x10) == 0x10)
     {
-        registers.uint8_ts[F] |= HalfCarryFlag;
+        registers.bytes[F] |= HalfCarryFlag;
     }
 
     // check full carry flag
@@ -267,17 +275,17 @@ inline void CPU::Add8(uint8_t A, uint8_t B, uint8_t& C)
 
     if (r & 0x0100)
     {
-        registers.uint8_ts[F] |= CarryFlag;
+        registers.bytes[F] |= CarryFlag;
     }
 
     // check zero:
     if (r == 0)
     {
-        registers.uint8_ts[F] |= ZeroFlag;
+        registers.bytes[F] |= ZeroFlag;
     }
 
     // Reset subtraction flag
-    registers.uint8_ts[F] &= ~AddSubFlag;
+    registers.bytes[F] &= ~AddSubFlag;
 }
 
 inline void CPU::Inc8(uint8_t& A)
@@ -285,7 +293,7 @@ inline void CPU::Inc8(uint8_t& A)
     // check half carry flag
     if (((A & 0xf) + 1 & 0xF0) == 0x10)
     {
-        registers.uint8_ts[F] |= HalfCarryFlag;
+        registers.bytes[F] |= HalfCarryFlag;
     }
 
     A = A + 1;
@@ -293,11 +301,11 @@ inline void CPU::Inc8(uint8_t& A)
     // check zero:
     if (A == 0)
     {
-        registers.uint8_ts[F] |= ZeroFlag;
+        registers.bytes[F] |= ZeroFlag;
     }
 
     // reset the subtract flag
-    registers.uint8_ts[F] &= ~AddSubFlag;
+    registers.bytes[F] &= ~AddSubFlag;
 }
 
 inline void CPU::Dec8(uint8_t& A)
@@ -305,7 +313,7 @@ inline void CPU::Dec8(uint8_t& A)
     // check half carry flag
     if (((A & 0xf) - 1 & 0xF0) == 0x10)
     {
-        registers.uint8_ts[F] |= HalfCarryFlag;
+        registers.bytes[F] |= HalfCarryFlag;
     }
 
     A = A - 1;
@@ -313,11 +321,11 @@ inline void CPU::Dec8(uint8_t& A)
     // check zero:
     if (A == 0)
     {
-        registers.uint8_ts[F] |= ZeroFlag;
+        registers.bytes[F] |= ZeroFlag;
     }
 
     // Activate the subtract flag
-    registers.uint8_ts[F] &= AddSubFlag;
+    registers.bytes[F] &= AddSubFlag;
 }
 
 inline void CPU::Sub8(uint8_t A, uint8_t B, uint8_t& C)
@@ -325,7 +333,7 @@ inline void CPU::Sub8(uint8_t A, uint8_t B, uint8_t& C)
     // check half carry flag:
     if ((((A & 0xf) - (B & 0xf)) & 0x10) == 0x10)
     {
-        registers.uint8_ts[F] |= HalfCarryFlag;
+        registers.bytes[F] |= HalfCarryFlag;
     }
 
     // check full carry flag
@@ -334,17 +342,17 @@ inline void CPU::Sub8(uint8_t A, uint8_t B, uint8_t& C)
 
     if (r & 0x0100)
     {
-        registers.uint8_ts[F] |= CarryFlag;
+        registers.bytes[F] |= CarryFlag;
     }
 
     // Check zero:
     if (r == 0)
     {
-        registers.uint8_ts[F] |= ZeroFlag;
+        registers.bytes[F] |= ZeroFlag;
     }
 
     // activate subtraction flag
-    registers.uint8_ts[F] |= AddSubFlag;
+    registers.bytes[F] |= AddSubFlag;
 }
 
 inline void CPU::AddC8(uint8_t A, uint8_t B, uint8_t& C)
@@ -352,26 +360,26 @@ inline void CPU::AddC8(uint8_t A, uint8_t B, uint8_t& C)
     // check half carry flag:
     if ((((A & 0xf) + (B & 0xf)) & 0x10) == 0x10)
     {
-        registers.uint8_ts[F] |= HalfCarryFlag;
+        registers.bytes[F] |= HalfCarryFlag;
     }
 
     // check full carry flag
-    uint16_t r = (uint16_t)A + (uint16_t)B + (uint16_t)(registers.uint8_ts[F] & CarryFlag >> 4);
+    uint16_t r = (uint16_t)A + (uint16_t)B + (uint16_t)(registers.bytes[F] & CarryFlag >> 4);
     C = (uint8_t)r;
 
     if (r & 0x0100)
     {
-        registers.uint8_ts[F] |= CarryFlag;
+        registers.bytes[F] |= CarryFlag;
     }
 
     // check zero:
     if (r == 0)
     {
-        registers.uint8_ts[F] |= ZeroFlag;
+        registers.bytes[F] |= ZeroFlag;
     }
 
     // Reset subtraction flag
-    registers.uint8_ts[F] &= ~AddSubFlag;
+    registers.bytes[F] &= ~AddSubFlag;
 }
 
 inline void CPU::SubC8(uint8_t A, uint8_t B, uint8_t& C)
@@ -379,26 +387,26 @@ inline void CPU::SubC8(uint8_t A, uint8_t B, uint8_t& C)
     // check half carry flag:
     if ((((A & 0xf) - (B & 0xf)) & 0x10) == 0x10)
     {
-        registers.uint8_ts[F] |= HalfCarryFlag;
+        registers.bytes[F] |= HalfCarryFlag;
     }
 
     // check full carry flag
-    uint16_t r = (uint16_t)A - (uint16_t)B - (uint16_t)(registers.uint8_ts[F] & CarryFlag >> 4);
+    uint16_t r = (uint16_t)A - (uint16_t)B - (uint16_t)(registers.bytes[F] & CarryFlag >> 4);
     C = (uint8_t)r;
 
     if (r & 0x0100)
     {
-        registers.uint8_ts[F] |= CarryFlag;
+        registers.bytes[F] |= CarryFlag;
     }
 
     // Check zero:
     if (r == 0)
     {
-        registers.uint8_ts[F] |= ZeroFlag;
+        registers.bytes[F] |= ZeroFlag;
     }
 
     // activate subtraction flag
-    registers.uint8_ts[F] |= AddSubFlag;
+    registers.bytes[F] |= AddSubFlag;
 }
 
 inline void CPU::And8(uint8_t A, uint8_t B, uint8_t& C)
@@ -408,17 +416,17 @@ inline void CPU::And8(uint8_t A, uint8_t B, uint8_t& C)
     // check zero:
     if (C == 0)
     {
-        registers.uint8_ts[F] |= ZeroFlag;
+        registers.bytes[F] |= ZeroFlag;
     }
 
     // reset subtraction flag
-    registers.uint8_ts[F] &= ~AddSubFlag;
+    registers.bytes[F] &= ~AddSubFlag;
 
     // reset carry flag
-    registers.uint8_ts[F] &= ~CarryFlag;
+    registers.bytes[F] &= ~CarryFlag;
 
     // set half carry flag
-    registers.uint8_ts[F] |= HalfCarryFlag;
+    registers.bytes[F] |= HalfCarryFlag;
 }
 
 inline void CPU::Or8(uint8_t A, uint8_t B, uint8_t& C)
@@ -428,17 +436,17 @@ inline void CPU::Or8(uint8_t A, uint8_t B, uint8_t& C)
     // check zero:
     if (C == 0)
     {
-        registers.uint8_ts[F] |= ZeroFlag;
+        registers.bytes[F] |= ZeroFlag;
     }
 
     // reset subtraction flag
-    registers.uint8_ts[F] &= ~AddSubFlag;
+    registers.bytes[F] &= ~AddSubFlag;
 
     // reset carry flag
-    registers.uint8_ts[F] &= ~CarryFlag;
+    registers.bytes[F] &= ~CarryFlag;
 
     // reset half carry flag
-    registers.uint8_ts[F] &= ~HalfCarryFlag;
+    registers.bytes[F] &= ~HalfCarryFlag;
 }
 
 inline void CPU::Xor8(uint8_t A, uint8_t B, uint8_t& C)
@@ -448,17 +456,17 @@ inline void CPU::Xor8(uint8_t A, uint8_t B, uint8_t& C)
     // check zero:
     if (C == 0)
     {
-        registers.uint8_ts[F] |= ZeroFlag;
+        registers.bytes[F] |= ZeroFlag;
     }
 
     // reset subtraction flag
-    registers.uint8_ts[F] &= ~AddSubFlag;
+    registers.bytes[F] &= ~AddSubFlag;
 
     // reset carry flag
-    registers.uint8_ts[F] &= ~CarryFlag;
+    registers.bytes[F] &= ~CarryFlag;
 
     // reset half carry flag
-    registers.uint8_ts[F] &= ~HalfCarryFlag;
+    registers.bytes[F] &= ~HalfCarryFlag;
 }
 
 inline void CPU::Cp8(uint8_t A, uint8_t B)
@@ -466,7 +474,7 @@ inline void CPU::Cp8(uint8_t A, uint8_t B)
     // check half carry flag:
     if ((((A & 0xf) - (B & 0xf)) & 0x10) == 0x10)
     {
-        registers.uint8_ts[F] |= HalfCarryFlag;
+        registers.bytes[F] |= HalfCarryFlag;
     }
 
     // check full carry flag
@@ -474,17 +482,17 @@ inline void CPU::Cp8(uint8_t A, uint8_t B)
 
     if (r & 0x0100)
     {
-        registers.uint8_ts[F] |= CarryFlag;
+        registers.bytes[F] |= CarryFlag;
     }
 
     // Check zero:
     if (r == 0)
     {
-        registers.uint8_ts[F] |= ZeroFlag;
+        registers.bytes[F] |= ZeroFlag;
     }
 
     // activate subtraction flag
-    registers.uint8_ts[F] |= AddSubFlag;
+    registers.bytes[F] |= AddSubFlag;
 }
 
 inline void CPU::Add16(uint16_t& A, uint16_t& B, uint16_t& C)
@@ -492,7 +500,7 @@ inline void CPU::Add16(uint16_t& A, uint16_t& B, uint16_t& C)
     // check half carry flag:
     if ((((A & 0xfff) + (B & 0xfff)) & 0x1000) == 0x1000)
     {
-        registers.uint8_ts[F] |= HalfCarryFlag;
+        registers.bytes[F] |= HalfCarryFlag;
     }
 
     // check full carry flag
@@ -501,11 +509,11 @@ inline void CPU::Add16(uint16_t& A, uint16_t& B, uint16_t& C)
 
     if (r & 0x10000)
     {
-        registers.uint8_ts[F] |= CarryFlag;
+        registers.bytes[F] |= CarryFlag;
     }
 
     // Reset subtraction flag
-    registers.uint8_ts[F] &= ~AddSubFlag;
+    registers.bytes[F] &= ~AddSubFlag;
 }
 
 
@@ -517,6 +525,7 @@ int CPU::ExecuteNextInstruction()
 
     // number of cycles the instruction will take to execute
     int mCycles = 1;
+    int oldPC = registers.shorts[PC];
 
     switch (instruction)
     {
@@ -561,7 +570,7 @@ int CPU::ExecuteNextInstruction()
         case JUMP_a16:
         {
             pcChanged = true;
-            // Jump to address in next 2 uint8_ts
+            // Jump to address in next 2 bytes
             registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
             mCycles += 3;
             break;
@@ -571,8 +580,8 @@ int CPU::ExecuteNextInstruction()
         case JUMP_C_a16:
         {
             pcChanged = true;
-            // Jump to address in next 2 uint8_ts if carry flag is set
-            if (registers.uint8_ts[F] & CarryFlag)
+            // Jump to address in next 2 bytes if carry flag is set
+            if (registers.bytes[F] & CarryFlag)
             {
                 registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 mCycles += 3;
@@ -587,8 +596,8 @@ int CPU::ExecuteNextInstruction()
         case JUMP_NC_a16:
         {
             pcChanged = true;
-            // Jump to address in next 2 uint8_ts if carry flag is not set
-            if (!(registers.uint8_ts[F] & CarryFlag))
+            // Jump to address in next 2 bytes if carry flag is not set
+            if (!(registers.bytes[F] & CarryFlag))
             {
                 registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 mCycles += 3;
@@ -603,8 +612,8 @@ int CPU::ExecuteNextInstruction()
         case JUMP_Z_a16:
         {
             pcChanged = true;
-            // Jump to address in next 2 uint8_ts if zero flag is set
-            if (registers.uint8_ts[F] & ZeroFlag)
+            // Jump to address in next 2 bytes if zero flag is set
+            if (registers.bytes[F] & ZeroFlag)
             {
                 registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 mCycles += 3;
@@ -619,8 +628,8 @@ int CPU::ExecuteNextInstruction()
         case JUMP_NZ_a16:
         {
             pcChanged = true;
-            // Jump to address in next 2 uint8_ts if zero flag is not set
-            if (!(registers.uint8_ts[F] & ZeroFlag))
+            // Jump to address in next 2 bytes if zero flag is not set
+            if (!(registers.bytes[F] & ZeroFlag))
             {
                 registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 mCycles += 3;
@@ -649,7 +658,7 @@ int CPU::ExecuteNextInstruction()
             pcChanged = true;
             // Jump to address relative to current PC if carry flag is set
             // This is a signed 8 bit value
-            if (registers.uint8_ts[F] & CarryFlag)
+            if (registers.bytes[F] & CarryFlag)
             {
                 int8_t offset = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 registers.shorts[PC] += offset + 2;
@@ -667,7 +676,7 @@ int CPU::ExecuteNextInstruction()
             pcChanged = true;
             // Jump to address relative to current PC if carry flag is not set
             // This is a signed 8 bit value
-            if (!(registers.uint8_ts[F] & CarryFlag))
+            if (!(registers.bytes[F] & CarryFlag))
             {
                 int8_t offset = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 registers.shorts[PC] += offset + 2;
@@ -685,7 +694,7 @@ int CPU::ExecuteNextInstruction()
             pcChanged = true;
             // Jump to address relative to current PC if zero flag is set
             // This is a signed 8 bit value
-            if (registers.uint8_ts[F] & ZeroFlag)
+            if (registers.bytes[F] & ZeroFlag)
             {
                 int8_t offset = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 registers.shorts[PC] += offset + 2;
@@ -703,7 +712,7 @@ int CPU::ExecuteNextInstruction()
             pcChanged = true;
             // Jump to address relative to current PC if zero flag is not set
             // This is a signed 8 bit value
-            if (!(registers.uint8_ts[F] & ZeroFlag))
+            if (!(registers.bytes[F] & ZeroFlag))
             {
                 int8_t offset = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 registers.shorts[PC] += offset + 2;
@@ -721,9 +730,9 @@ int CPU::ExecuteNextInstruction()
         case CALL_a16:
         {
             pcChanged = true;
-            // Push current PC onto stack and jump to address in next 2 uint8_ts
-            mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 1]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 2]);
+            // Push current PC onto stack and jump to address in next 2 bytes
+            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
+            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
             registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
             mCycles += 6;
             break;
@@ -731,11 +740,11 @@ int CPU::ExecuteNextInstruction()
         case CALL_C_a16:
         {
             pcChanged = true;
-            // Push current PC onto stack and jump to address in next 2 uint8_ts if carry flag is set
-            if (registers.uint8_ts[F] & CarryFlag)
+            // Push current PC onto stack and jump to address in next 2 bytes if carry flag is set
+            if (registers.bytes[F] & CarryFlag)
             {
-                mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 1]);
-                mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 2]);
+                mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
+                mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
                 registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 mCycles += 6;
             }
@@ -749,11 +758,11 @@ int CPU::ExecuteNextInstruction()
         case CALL_NC_a16:
         {
             pcChanged = true;
-            // Push current PC onto stack and jump to address in next 2 uint8_ts if carry flag is not set
-            if (!(registers.uint8_ts[F] & CarryFlag))
+            // Push current PC onto stack and jump to address in next 2 bytes if carry flag is not set
+            if (!(registers.bytes[F] & CarryFlag))
             {
-                mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 1]);
-                mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 2]);
+                mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
+                mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
                 registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 mCycles += 6;
             }
@@ -767,11 +776,11 @@ int CPU::ExecuteNextInstruction()
         case CALL_Z_a16:
         {
             pcChanged = true;
-            // Push current PC onto stack and jump to address in next 2 uint8_ts if zero flag is set
-            if (registers.uint8_ts[F] & ZeroFlag)
+            // Push current PC onto stack and jump to address in next 2 bytes if zero flag is set
+            if (registers.bytes[F] & ZeroFlag)
             {
-                mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 1]);
-                mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 2]);
+                mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
+                mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
                 registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 mCycles += 6;
             }
@@ -785,11 +794,11 @@ int CPU::ExecuteNextInstruction()
         case CALL_NZ_a16:
         {
             pcChanged = true;
-            // Push current PC onto stack and jump to address in next 2 uint8_ts if zero flag is not set
-            if (!(registers.uint8_ts[F] & ZeroFlag))
+            // Push current PC onto stack and jump to address in next 2 bytes if zero flag is not set
+            if (!(registers.bytes[F] & ZeroFlag))
             {
-                mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 1]);
-                mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 2]);
+                mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
+                mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
                 registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 mCycles += 6;
             }
@@ -804,7 +813,7 @@ int CPU::ExecuteNextInstruction()
         case RETURN:
         {
             pcChanged = true;
-            // Pop 2 uint8_ts from stack and jump to that address
+            // Pop 2 bytes from stack and jump to that address
             registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[SP]);
             registers.shorts[PC] |= mmu->ReadFromAddress(registers.shorts[SP] + 1) << 8;
             registers.shorts[SP] += 2;
@@ -814,7 +823,7 @@ int CPU::ExecuteNextInstruction()
         case RETURN_I:
         {
             pcChanged = true;
-            // Pop 2 uint8_ts from stack and jump to that address
+            // Pop 2 bytes from stack and jump to that address
             registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[SP]);
             registers.shorts[PC] |= mmu->ReadFromAddress(registers.shorts[SP] + 1) << 8;
             registers.shorts[SP] += 2;
@@ -826,8 +835,8 @@ int CPU::ExecuteNextInstruction()
         case RETURN_C:
         {
             pcChanged = true;
-            // Pop 2 uint8_ts from stack and jump to that address if carry flag is set
-            if (registers.uint8_ts[F] & CarryFlag)
+            // Pop 2 bytes from stack and jump to that address if carry flag is set
+            if (registers.bytes[F] & CarryFlag)
             {
                 registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[SP]);
                 registers.shorts[PC] |= mmu->ReadFromAddress(registers.shorts[SP] + 1) << 8;
@@ -843,8 +852,8 @@ int CPU::ExecuteNextInstruction()
         case RETURN_NC:
         {
             pcChanged = true;
-            // Pop 2 uint8_ts from stack and jump to that address if carry flag is not set
-            if (!(registers.uint8_ts[F] & CarryFlag))
+            // Pop 2 bytes from stack and jump to that address if carry flag is not set
+            if (!(registers.bytes[F] & CarryFlag))
             {
                 registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[SP]);
                 registers.shorts[PC] |= mmu->ReadFromAddress(registers.shorts[SP] + 1) << 8;
@@ -860,8 +869,8 @@ int CPU::ExecuteNextInstruction()
         case RETURN_Z:
         {
             pcChanged = true;
-            // Pop 2 uint8_ts from stack and jump to that address if zero flag is set
-            if (registers.uint8_ts[F] & ZeroFlag)
+            // Pop 2 bytes from stack and jump to that address if zero flag is set
+            if (registers.bytes[F] & ZeroFlag)
             {
                 registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[SP]);
                 registers.shorts[PC] |= mmu->ReadFromAddress(registers.shorts[SP] + 1) << 8;
@@ -877,8 +886,8 @@ int CPU::ExecuteNextInstruction()
         case RETURN_NZ:
         {
             pcChanged = true;
-            // Pop 2 uint8_ts from stack and jump to that address if zero flag is not set
-            if (!(registers.uint8_ts[F] & ZeroFlag))
+            // Pop 2 bytes from stack and jump to that address if zero flag is not set
+            if (!(registers.bytes[F] & ZeroFlag))
             {
                 registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[SP]);
                 registers.shorts[PC] |= mmu->ReadFromAddress(registers.shorts[SP] + 1) << 8;
@@ -897,8 +906,8 @@ int CPU::ExecuteNextInstruction()
         {
             pcChanged = true;
             // Push current PC onto stack and jump to address 0x0000
-            mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 1]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 2]);
+            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
+            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
             registers.shorts[PC] = 0x0000;
             mCycles += 4;
             break;
@@ -907,8 +916,8 @@ int CPU::ExecuteNextInstruction()
         {
             pcChanged = true;
             // Push current PC onto stack and jump to address 0x0008
-            mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 1]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 2]);
+            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
+            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
             registers.shorts[PC] = 0x0008;
             mCycles += 4;
             break;
@@ -917,8 +926,8 @@ int CPU::ExecuteNextInstruction()
         {
             pcChanged = true;
             // Push current PC onto stack and jump to address 0x0010
-            mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 1]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 2]);
+            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
+            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
             registers.shorts[PC] = 0x0010;
             mCycles += 4;
             break;
@@ -927,8 +936,8 @@ int CPU::ExecuteNextInstruction()
         {
             pcChanged = true;
             // Push current PC onto stack and jump to address 0x0018
-            mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 1]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 2]);
+            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
+            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
             registers.shorts[PC] = 0x0018;
             mCycles += 4;
             break;
@@ -937,8 +946,8 @@ int CPU::ExecuteNextInstruction()
         {
             pcChanged = true;
             // Push current PC onto stack and jump to address 0x0020
-            mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 1]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 2]);
+            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
+            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
             registers.shorts[PC] = 0x0020;
             mCycles += 4;
             break;
@@ -947,8 +956,8 @@ int CPU::ExecuteNextInstruction()
         {
             pcChanged = true;
             // Push current PC onto stack and jump to address 0x0028
-            mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 1]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 2]);
+            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
+            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
             registers.shorts[PC] = 0x0028;
             mCycles += 4;
             break;
@@ -957,8 +966,8 @@ int CPU::ExecuteNextInstruction()
         {
             pcChanged = true;
             // Push current PC onto stack and jump to address 0x0030
-            mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 1]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 2]);
+            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
+            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
             registers.shorts[PC] = 0x0030;
             mCycles += 4;
             break;
@@ -967,8 +976,8 @@ int CPU::ExecuteNextInstruction()
         {
             pcChanged = true;
             // Push current PC onto stack and jump to address 0x0038
-            mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 1]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.uint8_ts[PC + 2]);
+            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
+            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
             registers.shorts[PC] = 0x0038;
             mCycles += 4;
             break;
@@ -982,11 +991,11 @@ int CPU::ExecuteNextInstruction()
         case SCF:
         {
             // Set carry, clear N and H
-            registers.uint8_ts[F] |= CarryFlag;
+            registers.bytes[F] |= CarryFlag;
             // reset subtraction flag
-            registers.uint8_ts[F] &= ~AddSubFlag;
+            registers.bytes[F] &= ~AddSubFlag;
             // reset half carry flag
-            registers.uint8_ts[F] &= ~HalfCarryFlag;
+            registers.bytes[F] &= ~HalfCarryFlag;
             mCycles += 1;
             break;
         }
@@ -996,26 +1005,26 @@ int CPU::ExecuteNextInstruction()
         case DAA:
         {
             mCycles += 1;
-            uint8_t a = registers.uint8_ts[A];
-            if (!(registers.uint8_ts[F] & AddSubFlag))
+            uint8_t a = registers.bytes[A];
+            if (!(registers.bytes[F] & AddSubFlag))
             {  // after an addition, adjust if (half-)carry occurred or if result is out of bounds
-                if ((registers.uint8_ts[F] & CarryFlag) || a > 0x99)
+                if ((registers.bytes[F] & CarryFlag) || a > 0x99)
                 {
                     a += 0x60;
-                    registers.uint8_ts[F] |= CarryFlag;
+                    registers.bytes[F] |= CarryFlag;
                 }
-                if ((registers.uint8_ts[F] & HalfCarryFlag) || (a & 0x0f) > 0x09)
+                if ((registers.bytes[F] & HalfCarryFlag) || (a & 0x0f) > 0x09)
                 {
                     a += 0x6;
                 }
             }
             else
             {  // after a subtraction, only adjust if (half-)carry occurred
-                if (registers.uint8_ts[F] & CarryFlag)
+                if (registers.bytes[F] & CarryFlag)
                 {
                     a -= 0x60;
                 }
-                if (registers.uint8_ts[F] & HalfCarryFlag)
+                if (registers.bytes[F] & HalfCarryFlag)
                 {
                     a -= 0x6;
                 }
@@ -1024,12 +1033,12 @@ int CPU::ExecuteNextInstruction()
             // the usual z flag
             if (a == 0)
             {
-                registers.uint8_ts[F] |= ZeroFlag;
+                registers.bytes[F] |= ZeroFlag;
             }
-            registers.uint8_ts[F] &= ~HalfCarryFlag; // h flag is always cleared
+            registers.bytes[F] &= ~HalfCarryFlag; // h flag is always cleared
 
             // Put the updated value back into register A
-            registers.uint8_ts[A] = a;
+            registers.bytes[A] = a;
 
             break;
         }
@@ -1039,11 +1048,11 @@ int CPU::ExecuteNextInstruction()
         case CPL:
         {
             // Flip all bits in A
-            registers.uint8_ts[A] = ~registers.uint8_ts[A];
+            registers.bytes[A] = ~registers.bytes[A];
             // Set subtraction flag
-            registers.uint8_ts[F] |= AddSubFlag;
+            registers.bytes[F] |= AddSubFlag;
             // Set half carry flag
-            registers.uint8_ts[F] |= HalfCarryFlag;
+            registers.bytes[F] |= HalfCarryFlag;
             mCycles += 1;
             break;
         }
@@ -1053,11 +1062,11 @@ int CPU::ExecuteNextInstruction()
         case CCF:
         {
             // Flip carry flag
-            registers.uint8_ts[F] ^= CarryFlag;
+            registers.bytes[F] ^= CarryFlag;
             // Reset subtraction flag
-            registers.uint8_ts[F] &= ~AddSubFlag;
+            registers.bytes[F] &= ~AddSubFlag;
             // Reset half carry flag
-            registers.uint8_ts[F] &= ~HalfCarryFlag;
+            registers.bytes[F] &= ~HalfCarryFlag;
             mCycles += 1;
             break;
         }
@@ -1065,56 +1074,56 @@ int CPU::ExecuteNextInstruction()
         // Add each register to A
         case ADD_A_A:
         {
-            Add8(registers.uint8_ts[A], registers.uint8_ts[A], registers.uint8_ts[A]);
+            Add8(registers.bytes[A], registers.bytes[A], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case ADD_A_B:
         {
-            Add8(registers.uint8_ts[A], registers.uint8_ts[B], registers.uint8_ts[A]);
+            Add8(registers.bytes[A], registers.bytes[B], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case ADD_A_C:
         {
-            Add8(registers.uint8_ts[A], registers.uint8_ts[C], registers.uint8_ts[A]);
+            Add8(registers.bytes[A], registers.bytes[C], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case ADD_A_D:
         {
-            Add8(registers.uint8_ts[A], registers.uint8_ts[D], registers.uint8_ts[A]);
+            Add8(registers.bytes[A], registers.bytes[D], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case ADD_A_E:
         {
-            Add8(registers.uint8_ts[A], registers.uint8_ts[E], registers.uint8_ts[A]);
+            Add8(registers.bytes[A], registers.bytes[E], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case ADD_A_H:
         {
-            Add8(registers.uint8_ts[A], registers.uint8_ts[H], registers.uint8_ts[A]);
+            Add8(registers.bytes[A], registers.bytes[H], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case ADD_A_L:
         {
-            Add8(registers.uint8_ts[A], registers.uint8_ts[L], registers.uint8_ts[A]);
+            Add8(registers.bytes[A], registers.bytes[L], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case ADD_A_HL:
         {
             uint8_t hl = mmu->ReadFromAddress(registers.shorts[HL]);
-            Add8(registers.uint8_ts[A], hl, registers.uint8_ts[A]);
+            Add8(registers.bytes[A], hl, registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case ADD_A_d8:
         {
-            Add8(registers.uint8_ts[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.uint8_ts[A]);
+            Add8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
             registers.shorts[PC] ++;
             mCycles += 2;
             break;
@@ -1123,55 +1132,55 @@ int CPU::ExecuteNextInstruction()
         // Subtract each register from A
         case SUB_A:
         {
-            Sub8(registers.uint8_ts[A], registers.uint8_ts[A], registers.uint8_ts[A]);
+            Sub8(registers.bytes[A], registers.bytes[A], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case SUB_B:
         {
-            Sub8(registers.uint8_ts[A], registers.uint8_ts[B], registers.uint8_ts[A]);
+            Sub8(registers.bytes[A], registers.bytes[B], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case SUB_C:
         {
-            Sub8(registers.uint8_ts[A], registers.uint8_ts[C], registers.uint8_ts[A]);
+            Sub8(registers.bytes[A], registers.bytes[C], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case SUB_D:
         {
-            Sub8(registers.uint8_ts[A], registers.uint8_ts[D], registers.uint8_ts[A]);
+            Sub8(registers.bytes[A], registers.bytes[D], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case SUB_E:
         {
-            Sub8(registers.uint8_ts[A], registers.uint8_ts[E], registers.uint8_ts[A]);
+            Sub8(registers.bytes[A], registers.bytes[E], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case SUB_H:
         {
-            Sub8(registers.uint8_ts[A], registers.uint8_ts[H], registers.uint8_ts[A]);
+            Sub8(registers.bytes[A], registers.bytes[H], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case SUB_L:
         {
-            Sub8(registers.uint8_ts[A], registers.uint8_ts[L], registers.uint8_ts[A]);
+            Sub8(registers.bytes[A], registers.bytes[L], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case SUB_HL:
         {
-            Sub8(registers.uint8_ts[A], mmu->ReadFromAddress(registers.shorts[HL]), registers.uint8_ts[A]);
+            Sub8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[HL]), registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case SUB_d8:
         {
-            Sub8(registers.uint8_ts[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.uint8_ts[A]);
+            Sub8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
             registers.shorts[PC] ++;
             mCycles += 2;
             break;
@@ -1180,55 +1189,55 @@ int CPU::ExecuteNextInstruction()
         // Add each register with A and the carry flag
         case ADC_A:
         {
-            AddC8(registers.uint8_ts[A], registers.uint8_ts[A], registers.uint8_ts[A]);
+            AddC8(registers.bytes[A], registers.bytes[A], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case ADC_B:
         {
-            AddC8(registers.uint8_ts[A], registers.uint8_ts[B], registers.uint8_ts[A]);
+            AddC8(registers.bytes[A], registers.bytes[B], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case ADC_C:
         {
-            AddC8(registers.uint8_ts[A], registers.uint8_ts[C], registers.uint8_ts[A]);
+            AddC8(registers.bytes[A], registers.bytes[C], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case ADC_D:
         {
-            AddC8(registers.uint8_ts[A], registers.uint8_ts[D], registers.uint8_ts[A]);
+            AddC8(registers.bytes[A], registers.bytes[D], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case ADC_E:
         {
-            AddC8(registers.uint8_ts[A], registers.uint8_ts[E], registers.uint8_ts[A]);
+            AddC8(registers.bytes[A], registers.bytes[E], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case ADC_H:
         {
-            AddC8(registers.uint8_ts[A], registers.uint8_ts[H], registers.uint8_ts[A]);
+            AddC8(registers.bytes[A], registers.bytes[H], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case ADC_L:
         {
-            AddC8(registers.uint8_ts[A], registers.uint8_ts[L], registers.uint8_ts[A]);
+            AddC8(registers.bytes[A], registers.bytes[L], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case ADC_HL:
         {
-            AddC8(registers.uint8_ts[A], mmu->ReadFromAddress(registers.shorts[HL]), registers.uint8_ts[A]);
+            AddC8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[HL]), registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case ADC_d8:
         {
-            AddC8(registers.uint8_ts[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.uint8_ts[A]);
+            AddC8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
             registers.shorts[PC] ++;
             mCycles += 2;
             break;
@@ -1237,55 +1246,55 @@ int CPU::ExecuteNextInstruction()
         // Subtract each register and the carry flag from A 
         case SBC_A:
         {
-            SubC8(registers.uint8_ts[A], registers.uint8_ts[A], registers.uint8_ts[A]);
+            SubC8(registers.bytes[A], registers.bytes[A], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case SBC_B:
         {
-            SubC8(registers.uint8_ts[A], registers.uint8_ts[B], registers.uint8_ts[A]);
+            SubC8(registers.bytes[A], registers.bytes[B], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case SBC_C:
         {
-            SubC8(registers.uint8_ts[A], registers.uint8_ts[C], registers.uint8_ts[A]);
+            SubC8(registers.bytes[A], registers.bytes[C], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case SBC_D:
         {
-            SubC8(registers.uint8_ts[A], registers.uint8_ts[D], registers.uint8_ts[A]);
+            SubC8(registers.bytes[A], registers.bytes[D], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case SBC_E:
         {
-            SubC8(registers.uint8_ts[A], registers.uint8_ts[E], registers.uint8_ts[A]);
+            SubC8(registers.bytes[A], registers.bytes[E], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case SBC_H:
         {
-            SubC8(registers.uint8_ts[A], registers.uint8_ts[H], registers.uint8_ts[A]);
+            SubC8(registers.bytes[A], registers.bytes[H], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case SBC_L:
         {
-            SubC8(registers.uint8_ts[A], registers.uint8_ts[L], registers.uint8_ts[A]);
+            SubC8(registers.bytes[A], registers.bytes[L], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case SBC_HL:
         {
-            SubC8(registers.uint8_ts[A], mmu->ReadFromAddress(registers.shorts[HL]), registers.uint8_ts[A]);
+            SubC8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[HL]), registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case SBC_d8:
         {
-            SubC8(registers.uint8_ts[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.uint8_ts[A]);
+            SubC8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
             registers.shorts[PC] ++;
             mCycles += 2;
             break;
@@ -1294,55 +1303,55 @@ int CPU::ExecuteNextInstruction()
         // AND each register with A
         case AND_A:
         {
-            And8(registers.uint8_ts[A], registers.uint8_ts[A], registers.uint8_ts[A]);
+            And8(registers.bytes[A], registers.bytes[A], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case AND_B:
         {
-            And8(registers.uint8_ts[A], registers.uint8_ts[B], registers.uint8_ts[A]);
+            And8(registers.bytes[A], registers.bytes[B], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case AND_C:
         {
-            And8(registers.uint8_ts[A], registers.uint8_ts[C], registers.uint8_ts[A]);
+            And8(registers.bytes[A], registers.bytes[C], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case AND_D:
         {
-            And8(registers.uint8_ts[A], registers.uint8_ts[D], registers.uint8_ts[A]);
+            And8(registers.bytes[A], registers.bytes[D], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case AND_E:
         {
-            And8(registers.uint8_ts[A], registers.uint8_ts[E], registers.uint8_ts[A]);
+            And8(registers.bytes[A], registers.bytes[E], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case AND_H:
         {
-            And8(registers.uint8_ts[A], registers.uint8_ts[H], registers.uint8_ts[A]);
+            And8(registers.bytes[A], registers.bytes[H], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case AND_L:
         {
-            And8(registers.uint8_ts[A], registers.uint8_ts[L], registers.uint8_ts[A]);
+            And8(registers.bytes[A], registers.bytes[L], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case AND_HL:
         {
-            And8(registers.uint8_ts[A], mmu->ReadFromAddress(registers.shorts[HL]), registers.uint8_ts[A]);
+            And8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[HL]), registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case AND_d8:
         {
-            And8(registers.uint8_ts[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.uint8_ts[A]);
+            And8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
             registers.shorts[PC] ++;
             mCycles += 2;
             break;
@@ -1351,55 +1360,55 @@ int CPU::ExecuteNextInstruction()
         // OR each register with A
         case OR_A:
         {
-            Or8(registers.uint8_ts[A], registers.uint8_ts[A], registers.uint8_ts[A]);
+            Or8(registers.bytes[A], registers.bytes[A], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case OR_B:
         {
-            Or8(registers.uint8_ts[A], registers.uint8_ts[B], registers.uint8_ts[A]);
+            Or8(registers.bytes[A], registers.bytes[B], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case OR_C:
         {
-            Or8(registers.uint8_ts[A], registers.uint8_ts[C], registers.uint8_ts[A]);
+            Or8(registers.bytes[A], registers.bytes[C], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case OR_D:
         {
-            Or8(registers.uint8_ts[A], registers.uint8_ts[D], registers.uint8_ts[A]);
+            Or8(registers.bytes[A], registers.bytes[D], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case OR_E:
         {
-            Or8(registers.uint8_ts[A], registers.uint8_ts[E], registers.uint8_ts[A]);
+            Or8(registers.bytes[A], registers.bytes[E], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case OR_H:
         {
-            Or8(registers.uint8_ts[A], registers.uint8_ts[H], registers.uint8_ts[A]);
+            Or8(registers.bytes[A], registers.bytes[H], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case OR_L:
         {
-            Or8(registers.uint8_ts[A], registers.uint8_ts[L], registers.uint8_ts[A]);
+            Or8(registers.bytes[A], registers.bytes[L], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case OR_HL:
         {
-            Or8(registers.uint8_ts[A], mmu->ReadFromAddress(registers.shorts[HL]), registers.uint8_ts[A]);
+            Or8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[HL]), registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case OR_d8:
         {
-            Or8(registers.uint8_ts[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.uint8_ts[A]);
+            Or8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
             registers.shorts[PC] ++;
             mCycles += 2;
             break;
@@ -1408,55 +1417,55 @@ int CPU::ExecuteNextInstruction()
         // XOR each register with A
         case XOR_A:
         {
-            Xor8(registers.uint8_ts[A], registers.uint8_ts[A], registers.uint8_ts[A]);
+            Xor8(registers.bytes[A], registers.bytes[A], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case XOR_B:
         {
-            Xor8(registers.uint8_ts[A], registers.uint8_ts[B], registers.uint8_ts[A]);
+            Xor8(registers.bytes[A], registers.bytes[B], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case XOR_C:
         {
-            Xor8(registers.uint8_ts[A], registers.uint8_ts[C], registers.uint8_ts[A]);
+            Xor8(registers.bytes[A], registers.bytes[C], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case XOR_D:
         {
-            Xor8(registers.uint8_ts[A], registers.uint8_ts[D], registers.uint8_ts[A]);
+            Xor8(registers.bytes[A], registers.bytes[D], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case XOR_E:
         {
-            Xor8(registers.uint8_ts[A], registers.uint8_ts[E], registers.uint8_ts[A]);
+            Xor8(registers.bytes[A], registers.bytes[E], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case XOR_H:
         {
-            Xor8(registers.uint8_ts[A], registers.uint8_ts[H], registers.uint8_ts[A]);
+            Xor8(registers.bytes[A], registers.bytes[H], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case XOR_L:
         {
-            Xor8(registers.uint8_ts[A], registers.uint8_ts[L], registers.uint8_ts[A]);
+            Xor8(registers.bytes[A], registers.bytes[L], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case XOR_HL:
         {
-            Xor8(registers.uint8_ts[A], mmu->ReadFromAddress(registers.shorts[HL]), registers.uint8_ts[A]);
+            Xor8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[HL]), registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case XOR_d8:
         {
-            Xor8(registers.uint8_ts[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.uint8_ts[A]);
+            Xor8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
             registers.shorts[PC] ++;
             mCycles += 2;
             break;
@@ -1465,55 +1474,55 @@ int CPU::ExecuteNextInstruction()
         // Compare the register with A and store the result in the flags
         case CP_A:
         {
-            Cp8(registers.uint8_ts[A], registers.uint8_ts[A]);
+            Cp8(registers.bytes[A], registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case CP_B:
         {
-            Cp8(registers.uint8_ts[A], registers.uint8_ts[B]);
+            Cp8(registers.bytes[A], registers.bytes[B]);
             mCycles += 1;
             break;
         }
         case CP_C:
         {
-            Cp8(registers.uint8_ts[A], registers.uint8_ts[C]);
+            Cp8(registers.bytes[A], registers.bytes[C]);
             mCycles += 1;
             break;
         }
         case CP_D:
         {
-            Cp8(registers.uint8_ts[A], registers.uint8_ts[D]);
+            Cp8(registers.bytes[A], registers.bytes[D]);
             mCycles += 1;
             break;
         }
         case CP_E:
         {
-            Cp8(registers.uint8_ts[A], registers.uint8_ts[E]);
+            Cp8(registers.bytes[A], registers.bytes[E]);
             mCycles += 1;
             break;
         }
         case CP_H:
         {
-            Cp8(registers.uint8_ts[A], registers.uint8_ts[H]);
+            Cp8(registers.bytes[A], registers.bytes[H]);
             mCycles += 1;
             break;
         }
         case CP_L:
         {
-            Cp8(registers.uint8_ts[A], registers.uint8_ts[L]);
+            Cp8(registers.bytes[A], registers.bytes[L]);
             mCycles += 1;
             break;
         }
         case CP_HL:
         {
-            Cp8(registers.uint8_ts[A], mmu->ReadFromAddress(registers.shorts[HL]));
+            Cp8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[HL]));
             mCycles += 1;
             break;
         }
         case CP_d8:
         {
-            Cp8(registers.uint8_ts[A], mmu->ReadFromAddress(registers.shorts[PC] + 1));
+            Cp8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1));
             registers.shorts[PC] ++;
             mCycles += 2;
             break;
@@ -1522,43 +1531,43 @@ int CPU::ExecuteNextInstruction()
         // Increment each register  
         case INC_A:
         {
-            Inc8(registers.uint8_ts[A]);
+            Inc8(registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case INC_B:
         {
-            Inc8(registers.uint8_ts[B]);
+            Inc8(registers.bytes[B]);
             mCycles += 1;
             break;
         }
         case INC_C:
         {
-            Inc8(registers.uint8_ts[C]);
+            Inc8(registers.bytes[C]);
             mCycles += 1;
             break;
         }
         case INC_D:
         {
-            Inc8(registers.uint8_ts[D]);
+            Inc8(registers.bytes[D]);
             mCycles += 1;
             break;
         }
         case INC_E:
         {
-            Inc8(registers.uint8_ts[E]);
+            Inc8(registers.bytes[E]);
             mCycles += 1;
             break;
         }
         case INC_L:
         {
-            Inc8(registers.uint8_ts[L]);
+            Inc8(registers.bytes[L]);
             mCycles += 1;
             break;
         }
         case INC_H:
         {
-            Inc8(registers.uint8_ts[H]);
+            Inc8(registers.bytes[H]);
             mCycles += 1;
             break;
         }
@@ -1575,43 +1584,43 @@ int CPU::ExecuteNextInstruction()
         // Decrement each register
         case DEC_A:
         {
-            Dec8(registers.uint8_ts[A]);
+            Dec8(registers.bytes[A]);
             mCycles += 1;
             break;
         }
         case DEC_B:
         {
-            Dec8(registers.uint8_ts[B]);
+            Dec8(registers.bytes[B]);
             mCycles += 1;
             break;
         }
         case DEC_C:
         {
-            Dec8(registers.uint8_ts[C]);
+            Dec8(registers.bytes[C]);
             mCycles += 1;
             break;
         }
         case DEC_D:
         {
-            Dec8(registers.uint8_ts[D]);
+            Dec8(registers.bytes[D]);
             mCycles += 1;
             break;
         }
         case DEC_E:
         {
-            Dec8(registers.uint8_ts[E]);
+            Dec8(registers.bytes[E]);
             mCycles += 1;
             break;
         }
         case DEC_L:
         {
-            Dec8(registers.uint8_ts[L]);
+            Dec8(registers.bytes[L]);
             mCycles += 1;
             break;
         }
         case DEC_H:
         {
-            Dec8(registers.uint8_ts[H]);
+            Dec8(registers.bytes[H]);
             mCycles += 1;
             break;
         }
@@ -1628,64 +1637,64 @@ int CPU::ExecuteNextInstruction()
         case ROTATE_LEFT_A:
         {
             // capture the MSB
-            bool msb = (registers.uint8_ts[A] & 0x80) != 0;
+            bool msb = (registers.bytes[A] & 0x80) != 0;
             // shift the A register left by one bit
-            registers.uint8_ts[A] <<= 1;
+            registers.bytes[A] <<= 1;
             // set the LSB to the value of the carry flag
-            registers.uint8_ts[A] |= (registers.uint8_ts[F] & CarryFlag) ? 0x01 : 0x00;
+            registers.bytes[A] |= (registers.bytes[F] & CarryFlag) ? 0x01 : 0x00;
             // store the MSB in the carry flag
-            registers.uint8_ts[F] &= msb? CarryFlag : 0x00;
+            registers.bytes[F] &= msb? CarryFlag : 0x00;
 
             // Set all other flags to 0
-            registers.uint8_ts[F] &= ~(ZeroFlag | AddSubFlag | HalfCarryFlag);
+            registers.bytes[F] &= ~(ZeroFlag | AddSubFlag | HalfCarryFlag);
             mCycles += 1;
             break;
         }
         case ROTATE_LEFT_CA:
         {
             // Capture the MSB
-            bool msb = (registers.uint8_ts[A] & 0x80) != 0;
+            bool msb = (registers.bytes[A] & 0x80) != 0;
             // Shift the A register left by one bit
-            registers.uint8_ts[A] <<= 1;
+            registers.bytes[A] <<= 1;
             // Set the LSB to the value of the MSB
-            registers.uint8_ts[A] |= msb ? 0x01 : 0x00;
+            registers.bytes[A] |= msb ? 0x01 : 0x00;
             // Store the MSB in the carry flag
-            registers.uint8_ts[F] &= msb ? CarryFlag : 0x00;
+            registers.bytes[F] &= msb ? CarryFlag : 0x00;
 
             // Set all other flags to 0
-            registers.uint8_ts[F] &= ~(ZeroFlag | AddSubFlag | HalfCarryFlag);
+            registers.bytes[F] &= ~(ZeroFlag | AddSubFlag | HalfCarryFlag);
             mCycles += 1;
             break;
         }
         case ROTATE_RIGHT_A:
         {
             // Capture the LSB
-            bool lsb = (registers.uint8_ts[A] & 0x01) != 0;
+            bool lsb = (registers.bytes[A] & 0x01) != 0;
             // Shift the A register right by one bit
-            registers.uint8_ts[A] >>= 1;
+            registers.bytes[A] >>= 1;
             // Set the MSB to the value of the carry flag
-            registers.uint8_ts[A] |= (registers.uint8_ts[F] & CarryFlag) ? 0x80 : 0x00;
+            registers.bytes[A] |= (registers.bytes[F] & CarryFlag) ? 0x80 : 0x00;
             // Store the LSB in the carry flag
-            registers.uint8_ts[F] &= lsb ? CarryFlag : 0x00;
+            registers.bytes[F] &= lsb ? CarryFlag : 0x00;
 
             // Set all other flags to 0
-            registers.uint8_ts[F] &= ~(ZeroFlag | AddSubFlag | HalfCarryFlag);
+            registers.bytes[F] &= ~(ZeroFlag | AddSubFlag | HalfCarryFlag);
             mCycles += 1;
             break;
         }
         case ROTATE_RIGHT_CA:
         {
             // Capture the LSB
-            bool lsb = (registers.uint8_ts[A] & 0x01) != 0;
+            bool lsb = (registers.bytes[A] & 0x01) != 0;
             // Shift the A register right by one bit
-            registers.uint8_ts[A] >>= 1;
+            registers.bytes[A] >>= 1;
             // Set the MSB to the value of the LSB
-            registers.uint8_ts[A] |= lsb ? 0x80 : 0x00;
+            registers.bytes[A] |= lsb ? 0x80 : 0x00;
             // Store the LSB in the carry flag
-            registers.uint8_ts[F] &= lsb ? CarryFlag : 0x00;
+            registers.bytes[F] &= lsb ? CarryFlag : 0x00;
 
             // Set all other flags to 0
-            registers.uint8_ts[F] &= ~(ZeroFlag | AddSubFlag | HalfCarryFlag);
+            registers.bytes[F] &= ~(ZeroFlag | AddSubFlag | HalfCarryFlag);
             mCycles += 1;
             break;
         }
@@ -1696,49 +1705,49 @@ int CPU::ExecuteNextInstruction()
         // Load immediate value into each register
         case LOAD_A_d8:
         {
-            registers.uint8_ts[A] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+            registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
             registers.shorts[PC] ++;
             mCycles += 2;
             break;
         }
         case LOAD_B_d8:
         {
-            registers.uint8_ts[B] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+            registers.bytes[B] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
             registers.shorts[PC] ++;
             mCycles += 2;
             break;
         }
         case LOAD_C_d8:
         {
-            registers.uint8_ts[C] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+            registers.bytes[C] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
             registers.shorts[PC] ++;
             mCycles += 2;
             break;
         }
         case LOAD_D_d8:
         {
-            registers.uint8_ts[D] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+            registers.bytes[D] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
             registers.shorts[PC] ++;
             mCycles += 2;
             break;
         }
         case LOAD_E_d8:
         {
-            registers.uint8_ts[E] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+            registers.bytes[E] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
             registers.shorts[PC] ++;
             mCycles += 2;
             break;
         }
         case LOAD_H_d8:
         {
-            registers.uint8_ts[H] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+            registers.bytes[H] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
             registers.shorts[PC] ++;
             mCycles += 2;
             break;
         }
         case LOAD_L_d8:
         {
-            registers.uint8_ts[L] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+            registers.bytes[L] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
             registers.shorts[PC] ++;
             mCycles += 2;
             break;
@@ -1754,49 +1763,49 @@ int CPU::ExecuteNextInstruction()
         // Load value from one register into A
         case LOAD_A_B:
         {
-            registers.uint8_ts[A] = registers.uint8_ts[B];
+            registers.bytes[A] = registers.bytes[B];
             mCycles += 1;
             break;
         }
         case LOAD_A_C:
         {
-            registers.uint8_ts[A] = registers.uint8_ts[C];
+            registers.bytes[A] = registers.bytes[C];
             mCycles += 1;
             break;
         }
         case LOAD_A_D:
         {
-            registers.uint8_ts[A] = registers.uint8_ts[D];
+            registers.bytes[A] = registers.bytes[D];
             mCycles += 1;
             break;
         }
         case LOAD_A_E:
         {
-            registers.uint8_ts[A] = registers.uint8_ts[E];
+            registers.bytes[A] = registers.bytes[E];
             mCycles += 1;
             break;
         }
         case LOAD_A_H:
         {
-            registers.uint8_ts[A] = registers.uint8_ts[H];
+            registers.bytes[A] = registers.bytes[H];
             mCycles += 1;
             break;
         }
         case LOAD_A_L:
         {
-            registers.uint8_ts[A] = registers.uint8_ts[L];
+            registers.bytes[A] = registers.bytes[L];
             mCycles += 1;
             break;
         }
         case LOAD_A_HL:
         {
-            registers.uint8_ts[A] = mmu->ReadFromAddress(registers.shorts[HL]);
+            registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[HL]);
             mCycles += 2;
             break;
         }
         case LOAD_A_A:
         {
-            registers.uint8_ts[A] = registers.uint8_ts[A];
+            registers.bytes[A] = registers.bytes[A];
             mCycles += 1;
             break;
         }
@@ -1804,49 +1813,49 @@ int CPU::ExecuteNextInstruction()
         // Load another register into B
         case LOAD_B_A:
         {
-            registers.uint8_ts[B] = registers.uint8_ts[A];
+            registers.bytes[B] = registers.bytes[A];
             mCycles += 1;
             break;
         }
         case LOAD_B_B:
         {
-            registers.uint8_ts[B] = registers.uint8_ts[B];
+            registers.bytes[B] = registers.bytes[B];
             mCycles += 1;
             break;
         }
         case LOAD_B_C:
         {
-            registers.uint8_ts[B] = registers.uint8_ts[C];
+            registers.bytes[B] = registers.bytes[C];
             mCycles += 1;
             break;
         }
         case LOAD_B_D:
         {
-            registers.uint8_ts[B] = registers.uint8_ts[D];
+            registers.bytes[B] = registers.bytes[D];
             mCycles += 1;
             break;
         }
         case LOAD_B_E:
         {
-            registers.uint8_ts[B] = registers.uint8_ts[E];
+            registers.bytes[B] = registers.bytes[E];
             mCycles += 1;
             break;
         }
         case LOAD_B_H:
         {
-            registers.uint8_ts[B] = registers.uint8_ts[H];
+            registers.bytes[B] = registers.bytes[H];
             mCycles += 1;
             break;
         }
         case LOAD_B_L:
         {
-            registers.uint8_ts[B] = registers.uint8_ts[L];
+            registers.bytes[B] = registers.bytes[L];
             mCycles += 1;
             break;
         }
         case LOAD_B_HL:
         {
-            registers.uint8_ts[B] = mmu->ReadFromAddress(registers.shorts[HL]);
+            registers.bytes[B] = mmu->ReadFromAddress(registers.shorts[HL]);
             mCycles += 2;
             break;
         }
@@ -1854,49 +1863,49 @@ int CPU::ExecuteNextInstruction()
         // Load another register into C
         case LOAD_C_A:
         {
-            registers.uint8_ts[C] = registers.uint8_ts[A];
+            registers.bytes[C] = registers.bytes[A];
             mCycles += 1;
             break;
         }
         case LOAD_C_B:
         {
-            registers.uint8_ts[C] = registers.uint8_ts[B];
+            registers.bytes[C] = registers.bytes[B];
             mCycles += 1;
             break;
         }
         case LOAD_C_C:
         {
-            registers.uint8_ts[C] = registers.uint8_ts[C];
+            registers.bytes[C] = registers.bytes[C];
             mCycles += 1;
             break;
         }
         case LOAD_C_D:
         {
-            registers.uint8_ts[C] = registers.uint8_ts[D];
+            registers.bytes[C] = registers.bytes[D];
             mCycles += 1;
             break;
         }
         case LOAD_C_E:
         {
-            registers.uint8_ts[C] = registers.uint8_ts[E];
+            registers.bytes[C] = registers.bytes[E];
             mCycles += 1;
             break;
         }
         case LOAD_C_H:
         {
-            registers.uint8_ts[C] = registers.uint8_ts[H];
+            registers.bytes[C] = registers.bytes[H];
             mCycles += 1;
             break;
         }
         case LOAD_C_L:
         {
-            registers.uint8_ts[C] = registers.uint8_ts[L];
+            registers.bytes[C] = registers.bytes[L];
             mCycles += 1;
             break;
         }
         case LOAD_C_HL:
         {
-            registers.uint8_ts[C] = mmu->ReadFromAddress(registers.shorts[HL]);
+            registers.bytes[C] = mmu->ReadFromAddress(registers.shorts[HL]);
             mCycles += 2;
             break;
         }
@@ -1904,49 +1913,49 @@ int CPU::ExecuteNextInstruction()
         // Load another register into D
         case LOAD_D_A:
         {
-            registers.uint8_ts[D] = registers.uint8_ts[A];
+            registers.bytes[D] = registers.bytes[A];
             mCycles += 1;
             break;
         }
         case LOAD_D_B:
         {
-            registers.uint8_ts[D] = registers.uint8_ts[B];
+            registers.bytes[D] = registers.bytes[B];
             mCycles += 1;
             break;
         }
         case LOAD_D_C:
         {
-            registers.uint8_ts[D] = registers.uint8_ts[C];
+            registers.bytes[D] = registers.bytes[C];
             mCycles += 1;
             break;
         }
         case LOAD_D_D:
         {
-            registers.uint8_ts[D] = registers.uint8_ts[D];
+            registers.bytes[D] = registers.bytes[D];
             mCycles += 1;
             break;
         }
         case LOAD_D_E:
         {
-            registers.uint8_ts[D] = registers.uint8_ts[E];
+            registers.bytes[D] = registers.bytes[E];
             mCycles += 1;
             break;
         }
         case LOAD_D_H:
         {
-            registers.uint8_ts[D] = registers.uint8_ts[H];
+            registers.bytes[D] = registers.bytes[H];
             mCycles += 1;
             break;
         }
         case LOAD_D_L:
         {
-            registers.uint8_ts[D] = registers.uint8_ts[L];
+            registers.bytes[D] = registers.bytes[L];
             mCycles += 1;
             break;
         }
         case LOAD_D_HL:
         {
-            registers.uint8_ts[D] = mmu->ReadFromAddress(registers.shorts[HL]);
+            registers.bytes[D] = mmu->ReadFromAddress(registers.shorts[HL]);
             mCycles += 2;
             break;
         }
@@ -1954,49 +1963,49 @@ int CPU::ExecuteNextInstruction()
         // Load another register into E
         case LOAD_E_A:
         {
-            registers.uint8_ts[E] = registers.uint8_ts[A];
+            registers.bytes[E] = registers.bytes[A];
             mCycles += 1;
             break;
         }
         case LOAD_E_B:
         {
-            registers.uint8_ts[E] = registers.uint8_ts[B];
+            registers.bytes[E] = registers.bytes[B];
             mCycles += 1;
             break;
         }
         case LOAD_E_C:
         {
-            registers.uint8_ts[E] = registers.uint8_ts[C];
+            registers.bytes[E] = registers.bytes[C];
             mCycles += 1;
             break;
         }
         case LOAD_E_D:
         {
-            registers.uint8_ts[E] = registers.uint8_ts[D];
+            registers.bytes[E] = registers.bytes[D];
             mCycles += 1;
             break;
         }
         case LOAD_E_E:
         {
-            registers.uint8_ts[E] = registers.uint8_ts[E];
+            registers.bytes[E] = registers.bytes[E];
             mCycles += 1;
             break;
         }
         case LOAD_E_H:
         {
-            registers.uint8_ts[E] = registers.uint8_ts[H];
+            registers.bytes[E] = registers.bytes[H];
             mCycles += 1;
             break;
         }
         case LOAD_E_L:
         {
-            registers.uint8_ts[E] = registers.uint8_ts[L];
+            registers.bytes[E] = registers.bytes[L];
             mCycles += 1;
             break;
         }
         case LOAD_E_HL:
         {
-            registers.uint8_ts[E] = mmu->ReadFromAddress(registers.shorts[HL]);
+            registers.bytes[E] = mmu->ReadFromAddress(registers.shorts[HL]);
             mCycles += 2;
             break;
         }
@@ -2004,49 +2013,49 @@ int CPU::ExecuteNextInstruction()
         // Load another register into H
         case LOAD_H_A:
         {
-            registers.uint8_ts[H] = registers.uint8_ts[A];
+            registers.bytes[H] = registers.bytes[A];
             mCycles += 1;
             break;
         }
         case LOAD_H_B:
         {
-            registers.uint8_ts[H] = registers.uint8_ts[B];
+            registers.bytes[H] = registers.bytes[B];
             mCycles += 1;
             break;
         }
         case LOAD_H_C:
         {
-            registers.uint8_ts[H] = registers.uint8_ts[C];
+            registers.bytes[H] = registers.bytes[C];
             mCycles += 1;
             break;
         }
         case LOAD_H_D:
         {
-            registers.uint8_ts[H] = registers.uint8_ts[D];
+            registers.bytes[H] = registers.bytes[D];
             mCycles += 1;
             break;
         }
         case LOAD_H_E:
         {
-            registers.uint8_ts[H] = registers.uint8_ts[E];
+            registers.bytes[H] = registers.bytes[E];
             mCycles += 1;
             break;
         }
         case LOAD_H_H:
         {
-            registers.uint8_ts[H] = registers.uint8_ts[H];
+            registers.bytes[H] = registers.bytes[H];
             mCycles += 1;
             break;
         }
         case LOAD_H_L:
         {
-            registers.uint8_ts[H] = registers.uint8_ts[L];
+            registers.bytes[H] = registers.bytes[L];
             mCycles += 1;
             break;
         }
         case LOAD_H_HL:
         {
-            registers.uint8_ts[H] = mmu->ReadFromAddress(registers.shorts[HL]);
+            registers.bytes[H] = mmu->ReadFromAddress(registers.shorts[HL]);
             mCycles += 2;
             break;
         }
@@ -2054,49 +2063,49 @@ int CPU::ExecuteNextInstruction()
         // Load another register into L
         case LOAD_L_A:
         {
-            registers.uint8_ts[L] = registers.uint8_ts[A];
+            registers.bytes[L] = registers.bytes[A];
             mCycles += 1;
             break;
         }
         case LOAD_L_B:
         {
-            registers.uint8_ts[L] = registers.uint8_ts[B];
+            registers.bytes[L] = registers.bytes[B];
             mCycles += 1;
             break;
         }
         case LOAD_L_C:
         {
-            registers.uint8_ts[L] = registers.uint8_ts[C];
+            registers.bytes[L] = registers.bytes[C];
             mCycles += 1;
             break;
         }
         case LOAD_L_D:
         {
-            registers.uint8_ts[L] = registers.uint8_ts[D];
+            registers.bytes[L] = registers.bytes[D];
             mCycles += 1;
             break;
         }
         case LOAD_L_E:
         {
-            registers.uint8_ts[L] = registers.uint8_ts[E];
+            registers.bytes[L] = registers.bytes[E];
             mCycles += 1;
             break;
         }
         case LOAD_L_H:
         {
-            registers.uint8_ts[L] = registers.uint8_ts[H];
+            registers.bytes[L] = registers.bytes[H];
             mCycles += 1;
             break;
         }
         case LOAD_L_L:
         {
-            registers.uint8_ts[L] = registers.uint8_ts[L];
+            registers.bytes[L] = registers.bytes[L];
             mCycles += 1;
             break;
         }
         case LOAD_L_HL:
         {
-            registers.uint8_ts[L] = mmu->ReadFromAddress(registers.shorts[HL]);
+            registers.bytes[L] = mmu->ReadFromAddress(registers.shorts[HL]);
             mCycles += 2;
             break;
         }
@@ -2104,43 +2113,43 @@ int CPU::ExecuteNextInstruction()
         // Load the value of a register into the memory address pointed to by HL
         case LOAD_HL_A:
         {
-            mmu->WriteToAddress(registers.shorts[HL], registers.uint8_ts[A]);
+            mmu->WriteToAddress(registers.shorts[HL], registers.bytes[A]);
             mCycles += 2;
             break;
         }
         case LOAD_HL_B:
         {
-            mmu->WriteToAddress(registers.shorts[HL], registers.uint8_ts[B]);
+            mmu->WriteToAddress(registers.shorts[HL], registers.bytes[B]);
             mCycles += 2;
             break;
         }
         case LOAD_HL_C:
         {
-            mmu->WriteToAddress(registers.shorts[HL], registers.uint8_ts[C]);
+            mmu->WriteToAddress(registers.shorts[HL], registers.bytes[C]);
             mCycles += 2;
             break;
         }
         case LOAD_HL_D:
         {
-            mmu->WriteToAddress(registers.shorts[HL], registers.uint8_ts[D]);
+            mmu->WriteToAddress(registers.shorts[HL], registers.bytes[D]);
             mCycles += 2;
             break;
         }
         case LOAD_HL_E:
         {
-            mmu->WriteToAddress(registers.shorts[HL], registers.uint8_ts[E]);
+            mmu->WriteToAddress(registers.shorts[HL], registers.bytes[E]);
             mCycles += 2;
             break;
         }
         case LOAD_HL_H:
         {
-            mmu->WriteToAddress(registers.shorts[HL], registers.uint8_ts[H]);
+            mmu->WriteToAddress(registers.shorts[HL], registers.bytes[H]);
             mCycles += 2;
             break;
         }
         case LOAD_HL_L:
         {
-            mmu->WriteToAddress(registers.shorts[HL], registers.uint8_ts[L]);
+            mmu->WriteToAddress(registers.shorts[HL], registers.bytes[L]);
             mCycles += 2;
             break;
         }
@@ -2150,25 +2159,25 @@ int CPU::ExecuteNextInstruction()
         // load A into BC or DE, and vice versa
         case LOAD_A_BC:
         {
-            registers.uint8_ts[A] = mmu->ReadFromAddress(registers.shorts[BC]);
+            registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[BC]);
             mCycles += 2;
             break;
         }
         case LOAD_A_DE:
         {
-            registers.uint8_ts[A] = mmu->ReadFromAddress(registers.shorts[DE]);
+            registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[DE]);
             mCycles += 2;
             break;
         }
         case LOAD_BC_A:
         {
-            mmu->WriteToAddress(registers.shorts[BC], registers.uint8_ts[A]);
+            mmu->WriteToAddress(registers.shorts[BC], registers.bytes[A]);
             mCycles += 2;
             break;
         }
         case LOAD_DE_A:
         {
-            mmu->WriteToAddress(registers.shorts[DE], registers.uint8_ts[A]);
+            mmu->WriteToAddress(registers.shorts[DE], registers.bytes[A]);
             mCycles += 2;
             break;
         }
@@ -2176,13 +2185,13 @@ int CPU::ExecuteNextInstruction()
         // Load and store with offset address
         case LOAD_Cv_A:
         {
-            mmu->WriteToAddress(MMU::ioRegistersOffset + registers.uint8_ts[C], registers.uint8_ts[A]);
+            mmu->WriteToAddress(MMU::ioRegistersOffset + registers.bytes[C], registers.bytes[A]);
             mCycles += 2;
             break;
         }
         case LOAD_A_Cv:
         {
-            registers.uint8_ts[A] = mmu->ReadFromAddress(MMU::ioRegistersOffset + registers.uint8_ts[C]);
+            registers.bytes[A] = mmu->ReadFromAddress(MMU::ioRegistersOffset + registers.bytes[C]);
             mCycles += 2;
             break;
         }
@@ -2192,7 +2201,7 @@ int CPU::ExecuteNextInstruction()
         {
             uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
             registers.shorts[PC] += 2;
-            mmu->WriteToAddress(address, registers.uint8_ts[A]);
+            mmu->WriteToAddress(address, registers.bytes[A]);
             mCycles += 4;
             break;
         }
@@ -2200,7 +2209,7 @@ int CPU::ExecuteNextInstruction()
         {
             uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
             registers.shorts[PC] += 2;
-            registers.uint8_ts[A] = mmu->ReadFromAddress(address);
+            registers.bytes[A] = mmu->ReadFromAddress(address);
             mCycles += 4;
             break;
         }
@@ -2208,28 +2217,28 @@ int CPU::ExecuteNextInstruction()
         // Load and store from HL pointer to A, incrementing or decrementing the pointer after the fact
         case LOAD_A_HLplus:
         {
-            registers.uint8_ts[A] = mmu->ReadFromAddress(registers.shorts[HL]);
+            registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[HL]);
             registers.shorts[HL] ++;
             mCycles += 2;
             break;
         }
         case LOAD_A_HLminus:
         {
-            registers.uint8_ts[A] = mmu->ReadFromAddress(registers.shorts[HL]);
+            registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[HL]);
             registers.shorts[HL] --;
             mCycles += 2;
             break;
         }
         case LOAD_HLplus_A:
         {
-            mmu->WriteToAddress(registers.shorts[HL], registers.uint8_ts[A]);
+            mmu->WriteToAddress(registers.shorts[HL], registers.bytes[A]);
             registers.shorts[HL] ++;
             mCycles += 2;
             break;
         }
         case LOAD_HLminus_A:
         {
-            mmu->WriteToAddress(registers.shorts[HL], registers.uint8_ts[A]);
+            mmu->WriteToAddress(registers.shorts[HL], registers.bytes[A]);
             registers.shorts[HL] --;
             mCycles += 2;
             break;
@@ -2238,14 +2247,14 @@ int CPU::ExecuteNextInstruction()
         // Load and store from absolute 8 bit address offset by 0xFF00
         case LOAD_H_a8_A:
         {
-            mmu->WriteToAddress(MMU::ioRegistersOffset + mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.uint8_ts[A]);
+            mmu->WriteToAddress(MMU::ioRegistersOffset + mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
             registers.shorts[PC] ++;
             mCycles += 3;
             break;
         }
         case LOAD_H_A_a8:
         {
-            registers.uint8_ts[A] = mmu->ReadFromAddress(MMU::ioRegistersOffset + mmu->ReadFromAddress(registers.shorts[PC] + 1));
+            registers.bytes[A] = mmu->ReadFromAddress(MMU::ioRegistersOffset + mmu->ReadFromAddress(registers.shorts[PC] + 1));
             registers.shorts[PC] ++;
             mCycles += 3;
             break;
@@ -2394,7 +2403,7 @@ int CPU::ExecuteNextInstruction()
             // check half carry flag:
             if ((((sp & 0xf) + (r & 0xf)) & 0x10) == 0x10)
             {
-                registers.uint8_ts[F] |= HalfCarryFlag;
+                registers.bytes[F] |= HalfCarryFlag;
             }
 
             // check full carry flag
@@ -2402,15 +2411,15 @@ int CPU::ExecuteNextInstruction()
 
             if (hl & 0x0100)
             {
-                registers.uint8_ts[F] |= CarryFlag;
+                registers.bytes[F] |= CarryFlag;
             }
             registers.shorts[HL] = hl;
 
             // reset 0 flag??
-            registers.uint8_ts[F] &= ~ZeroFlag;
+            registers.bytes[F] &= ~ZeroFlag;
 
             // Reset subtraction flag
-            registers.uint8_ts[F] &= ~AddSubFlag;
+            registers.bytes[F] &= ~AddSubFlag;
             
             registers.shorts[PC] ++;
             mCycles += 3;
@@ -2420,32 +2429,32 @@ int CPU::ExecuteNextInstruction()
         // Push 16 bit register onto stack
         case PUSH_BC:
         {
-            mmu->WriteToAddress(registers.shorts[SP] - 1, registers.uint8_ts[B]);
-            mmu->WriteToAddress(registers.shorts[SP] - 2, registers.uint8_ts[C]);
+            mmu->WriteToAddress(registers.shorts[SP] - 1, registers.bytes[B]);
+            mmu->WriteToAddress(registers.shorts[SP] - 2, registers.bytes[C]);
             registers.shorts[SP] -= 2;
             mCycles += 4;
             break;
         }
         case PUSH_DE:
         {
-            mmu->WriteToAddress(registers.shorts[SP] - 1, registers.uint8_ts[D]);
-            mmu->WriteToAddress(registers.shorts[SP] - 2, registers.uint8_ts[E]);
+            mmu->WriteToAddress(registers.shorts[SP] - 1, registers.bytes[D]);
+            mmu->WriteToAddress(registers.shorts[SP] - 2, registers.bytes[E]);
             registers.shorts[SP] -= 2;
             mCycles += 4;
             break;
         }
         case PUSH_HL:
         {
-            mmu->WriteToAddress(registers.shorts[SP] - 1, registers.uint8_ts[H]);
-            mmu->WriteToAddress(registers.shorts[SP] - 2, registers.uint8_ts[L]);
+            mmu->WriteToAddress(registers.shorts[SP] - 1, registers.bytes[H]);
+            mmu->WriteToAddress(registers.shorts[SP] - 2, registers.bytes[L]);
             registers.shorts[SP] -= 2;
             mCycles += 4;
             break;
         }
         case PUSH_AF:
         {
-            mmu->WriteToAddress(registers.shorts[SP] - 1, registers.uint8_ts[A]);
-            mmu->WriteToAddress(registers.shorts[SP] - 2, registers.uint8_ts[F]);
+            mmu->WriteToAddress(registers.shorts[SP] - 1, registers.bytes[A]);
+            mmu->WriteToAddress(registers.shorts[SP] - 2, registers.bytes[F]);
             registers.shorts[SP] -= 2;
             mCycles += 4;
             break;
@@ -2454,54 +2463,63 @@ int CPU::ExecuteNextInstruction()
         // Pop 16 bit register from stack
         case POP_BC:
         {
-            registers.uint8_ts[C] = mmu->ReadFromAddress(registers.shorts[SP]);
-            registers.uint8_ts[B] = mmu->ReadFromAddress(registers.shorts[SP] + 1);
+            registers.bytes[C] = mmu->ReadFromAddress(registers.shorts[SP]);
+            registers.bytes[B] = mmu->ReadFromAddress(registers.shorts[SP] + 1);
             registers.shorts[SP] += 2;
             mCycles += 3;
             break;
         }
         case POP_DE:
         {
-            registers.uint8_ts[E] = mmu->ReadFromAddress(registers.shorts[SP]);
-            registers.uint8_ts[D] = mmu->ReadFromAddress(registers.shorts[SP] + 1);
+            registers.bytes[E] = mmu->ReadFromAddress(registers.shorts[SP]);
+            registers.bytes[D] = mmu->ReadFromAddress(registers.shorts[SP] + 1);
             registers.shorts[SP] += 2;
             mCycles += 3;
             break;
         }
         case POP_HL:
         {
-            registers.uint8_ts[L] = mmu->ReadFromAddress(registers.shorts[SP]);
-            registers.uint8_ts[H] = mmu->ReadFromAddress(registers.shorts[SP] + 1);
+            registers.bytes[L] = mmu->ReadFromAddress(registers.shorts[SP]);
+            registers.bytes[H] = mmu->ReadFromAddress(registers.shorts[SP] + 1);
             registers.shorts[SP] += 2;
             mCycles += 3;
             break;
         }
         case POP_AF:
         {
-            registers.uint8_ts[F] = mmu->ReadFromAddress(registers.shorts[SP]);
-            registers.uint8_ts[A] = mmu->ReadFromAddress(registers.shorts[SP] + 1);
+            registers.bytes[F] = mmu->ReadFromAddress(registers.shorts[SP]);
+            registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[SP] + 1);
             registers.shorts[SP] += 2;
             mCycles += 3;
             break;
         }
 
         /////////////////////////////////
-        // those step instructions?
+        // Prefix'd instructions
+        case PREFIX:
+        {
+            // carry out instruction in following byte
+            registers.shorts[PC] ++;
+            instruction = mmu->ReadFromAddress(registers.shorts[PC]);
+            mCycles += ExecutePrefixInstruction(instruction);
+            break;
+        }
 
         // Jumps / calls
         default:
+            printf("instruction: %x  at PC: %d\n", instruction, oldPC);
             std::cout << "Bad opcode!" << std::endl;
             //exit(-1);
     }
 
-    printf("instruction: %x\n", instruction);
+    printf("instruction: %x  at PC: %d  %x\n", instruction, oldPC, oldPC);
 
-        // Print all registers for debug
-        printf("A: %x\tB: %x\tC: %x\tD: %x\nE: %x\tH: %x\tL: %x\nS: %x\tP: %x\nF: %x\tPC: %x\n",
-                registers.uint8_ts[A], registers.uint8_ts[B], registers.uint8_ts[C], registers.uint8_ts[D], 
-                registers.uint8_ts[E], registers.uint8_ts[H], registers.uint8_ts[L], 
-                registers.uint8_ts[S], registers.uint8_ts[P], 
-                registers.uint8_ts[F], registers.shorts[PC]);
+    // Print all registers for debug
+    printf("A: %x\tB: %x\tC: %x\tD: %x\nE: %x\tH: %x\tL: %x\nS: %x\tP: %x\nF: %x\tPC: %x\n",
+            registers.bytes[A], registers.bytes[B], registers.bytes[C], registers.bytes[D], 
+            registers.bytes[E], registers.bytes[H], registers.bytes[L], 
+            registers.bytes[S], registers.bytes[P], 
+            registers.bytes[F], registers.shorts[PC]);
 
     // Update PC if a jump instruction has not been executed
     if (!pcChanged)
@@ -2512,4 +2530,335 @@ int CPU::ExecuteNextInstruction()
     }
 
     return mCycles;
+}
+
+int CPU::ExecutePrefixInstruction(uint8_t instruction)
+{
+    int mCycles = 2;
+
+    // First two bits tell us which operation: rot, test bit, clear bit, set bit
+    // Second three bits tell us which bit/which operation
+    // third three bits tell us which register to operate on
+    uint8_t operation = instruction & PrefixOperationMask;
+    uint8_t bitNumber = instruction & PrefixBitMask;
+    uint8_t rotOperation = instruction & PrefixRotOperationMask;
+    uint8_t reg = instruction & PrefixRegisterMask;
+
+    switch (operation)
+    {
+        case PrefixRot:
+        {
+            // check rotOperation
+            mCycles += PerformPrefixedRotOperation(rotOperation, GetRegisterFromPrefixIndex(reg), reg == RegisterThatsActuallyMemory);
+            break;
+        }
+        case PrefixBit:
+        {
+            // test bit bitNumber in register reg
+            if (reg == RegisterThatsActuallyMemory)
+            {
+                uint8_t val = mmu->ReadFromAddress(registers.shorts[HL]);
+                registers.bytes[F] |= val & (0x1 << bitNumber)? ZeroFlag : 0x00;
+                registers.bytes[F] &= ~AddSubFlag;
+                registers.bytes[F] |= HalfCarryFlag;
+                mCycles += 1;
+            }
+            else
+            {
+                uint8_t regIndex = GetRegisterFromPrefixIndex(reg);
+                registers.bytes[F] |= registers.bytes[regIndex] & (0x1 << bitNumber)? ZeroFlag : 0x00;
+                registers.bytes[F] &= ~AddSubFlag;
+                registers.bytes[F] |= HalfCarryFlag;
+            }
+            break;
+        }
+        case PrefixRes:
+        {
+            // clear bit bitNumber in register reg
+            if (reg == RegisterThatsActuallyMemory)
+            {
+                uint8_t val = mmu->ReadFromAddress(registers.shorts[HL]);
+                val &= ~(0x01 << bitNumber);
+                mmu->WriteToAddress(registers.shorts[HL], (uint8_t)val);
+                mCycles += 2;
+            }
+            else
+            {
+                uint8_t regIndex = GetRegisterFromPrefixIndex(reg);
+                registers.bytes[regIndex] &= ~(0x01 << bitNumber);
+            }
+            break;
+        }
+        case PrefixSet:
+        {
+            // set bit bitNumber in register reg
+            if (reg == RegisterThatsActuallyMemory)
+            {
+                uint8_t val = mmu->ReadFromAddress(registers.shorts[HL]);
+                val |= 0x01 << bitNumber;
+                mmu->WriteToAddress(registers.shorts[HL], (uint8_t)val);
+                mCycles += 2;
+            }
+            else
+            {
+                uint8_t regIndex = GetRegisterFromPrefixIndex(reg);
+                registers.bytes[regIndex] |= 0x01 << bitNumber;
+            }
+            break;
+        }
+    }
+
+    return mCycles; 
+}
+
+uint8_t CPU::GetRegisterFromPrefixIndex(uint8_t reg)
+{
+    switch (reg)
+    {
+        case 0: return B; break;
+        case 1: return C; break;
+        case 2: return D; break;
+        case 3: return E; break;
+        case 4: return H; break;
+        case 5: return L; break;
+        case 7: return A; break;
+        default: return 0;
+    }
+}
+
+int CPU::PerformPrefixedRotOperation(uint8_t operation, uint8_t regIndex, bool useHL)
+{
+    int extra_mCycles = 0;
+     uint8_t val = 0;
+
+    switch (operation)
+    {
+        case PrefixRLC:
+        {
+            // TODO is this arithmetic or logical shift?
+            // Rotate left through carry
+            bool setCarry = false;
+            uint8_t carryBit = registers.bytes[F] & CarryFlag? 1 : 0;
+            if (useHL)
+            {
+                val = mmu->ReadFromAddress(registers.shorts[HL]);
+                setCarry = val & 0x80;
+                val = (val << 1) | carryBit;
+                mmu->WriteToAddress(registers.shorts[HL], val);
+                extra_mCycles = 2;
+            }
+            else
+            {
+                val = registers.bytes[regIndex];
+                setCarry = val & 0x80;
+                val = (val << 1) | carryBit;
+                registers.bytes[regIndex] = val;
+            }
+
+            // Zero subtract, half carry, and carry flags
+            registers.bytes[F] |= setCarry? CarryFlag : 0;
+            registers.bytes[F] |= val == 0? ZeroFlag : 0;
+            registers.bytes[F] &= ~HalfCarryFlag;
+            registers.bytes[F] &= ~AddSubFlag;
+            break;
+        }
+        case PrefixRRC:
+        {
+            // Rotate right through carry
+            bool setCarry = false;
+            uint8_t carryBit = registers.bytes[F] & CarryFlag? 0x80 : 0;
+            if (useHL)
+            {
+                val = mmu->ReadFromAddress(registers.shorts[HL]);
+                setCarry = val & 0x80;
+                val = (val >> 1) | carryBit;
+                mmu->WriteToAddress(registers.shorts[HL], val);
+                extra_mCycles = 2;
+            }
+            else
+            {
+                val = registers.bytes[regIndex];
+                setCarry = val & 0x80;
+                val = (val >> 1) | carryBit;
+                registers.bytes[regIndex] = val;
+            }
+
+            // Zero subtract, half carry, and carry flags
+            registers.bytes[F] |= setCarry? CarryFlag : 0;
+            registers.bytes[F] |= val == 0? ZeroFlag : 0;
+            registers.bytes[F] &= ~HalfCarryFlag;
+            registers.bytes[F] &= ~AddSubFlag;
+            break;
+        }
+        case PrefixRL:
+        {
+            // Rotate left, but not through carry. MSB goes to LSB
+            bool setCarry = false;
+            if (useHL)
+            {
+                val = mmu->ReadFromAddress(registers.shorts[HL]);
+                setCarry = val & 0x80;
+                uint8_t msb = val & 0x80? 1 : 0;
+                val = (val << 1) | msb;
+                mmu->WriteToAddress(registers.shorts[HL], val);
+                extra_mCycles = 2;
+            }
+            else
+            {
+                val = registers.bytes[regIndex];
+                setCarry = val & 0x80;
+                uint8_t msb = val & 0x80? 1 : 0;
+                val = (val << 1) | msb;
+                registers.bytes[regIndex] = val;
+            }
+
+            // Zero subtract, half carry, and carry flags
+            registers.bytes[F] |= setCarry? CarryFlag : 0;
+            registers.bytes[F] |= val == 0? ZeroFlag : 0;
+            registers.bytes[F] &= ~HalfCarryFlag;
+            registers.bytes[F] &= ~AddSubFlag;
+            break;
+        }
+        case PrefixRR:
+        {
+            // Rotate left, but not through carry. LSB goes to MSB
+            bool setCarry = false;
+            if (useHL)
+            {
+                val = mmu->ReadFromAddress(registers.shorts[HL]);
+                setCarry = val & 0x80;
+                uint8_t lsb = val & 0x01? 0x80 : 0;
+                val = (val >> 1) | lsb;
+                mmu->WriteToAddress(registers.shorts[HL], val);
+                extra_mCycles = 2;
+            }
+            else
+            {
+                val = registers.bytes[regIndex];
+                setCarry = val & 0x80;
+                uint8_t lsb = val & 0x01? 0x80 : 0;
+                val = (val >> 1) | lsb;
+                registers.bytes[regIndex] = val;
+            }
+
+            // Zero subtract, half carry, and carry flags
+            registers.bytes[F] |= setCarry? CarryFlag : 0;
+            registers.bytes[F] |= val == 0? ZeroFlag : 0;
+            registers.bytes[F] &= ~HalfCarryFlag;
+            registers.bytes[F] &= ~AddSubFlag;
+            break;
+        }
+        case PrefixSLA:
+        {
+            // Shift left logical. Carry bit comes from msb
+            bool setCarry = false;
+            if (useHL)
+            {
+                val = mmu->ReadFromAddress(registers.shorts[HL]);
+                setCarry = val & 0x80;
+                val = val << 1;
+                mmu->WriteToAddress(registers.shorts[HL], val);
+                extra_mCycles = 2;
+            }
+            else
+            {
+                val = registers.bytes[regIndex];
+                setCarry = val & 0x80;
+                val = val << 1;
+                registers.bytes[regIndex] = val;
+            }
+
+            // Zero subtract, half carry, and carry flags
+            registers.bytes[F] |= setCarry? CarryFlag : 0;
+            registers.bytes[F] |= val == 0? ZeroFlag : 0;
+            registers.bytes[F] &= ~HalfCarryFlag;
+            registers.bytes[F] &= ~AddSubFlag;
+            break;
+        }
+        case PrefixSRA:
+        {
+            // Shift right arithmetic. Carry bit comes from lsb, msb doesn't change
+            bool setCarry = false;
+            if (useHL)
+            {
+                val = mmu->ReadFromAddress(registers.shorts[HL]);
+                setCarry = val & 0x01;
+                uint8_t msb = val & 0x80;
+                val = (val >> 1) | msb;
+                mmu->WriteToAddress(registers.shorts[HL], val);
+                extra_mCycles = 2;
+            }
+            else
+            {
+                val = registers.bytes[regIndex];
+                setCarry = val & 0x01;
+                uint8_t msb = val & 0x80;
+                val = (val >> 1) | msb;
+                registers.bytes[regIndex] = val;
+            }
+
+            // Zero subtract, half carry, and carry flags
+            registers.bytes[F] |= setCarry? CarryFlag : 0;
+            registers.bytes[F] |= val == 0? ZeroFlag : 0;
+            registers.bytes[F] &= ~HalfCarryFlag;
+            registers.bytes[F] &= ~AddSubFlag;
+            break;
+        }
+        case PrefixSWAP:
+        {
+            // exchange low and high nibble
+            if (useHL)
+            {
+                val = mmu->ReadFromAddress(registers.shorts[HL]);
+                uint8_t highNibble = val & 0xF0;
+                uint8_t lowNibble = val & 0x0F;
+                val = (highNibble >> 4) | (lowNibble << 4);
+                mmu->WriteToAddress(registers.shorts[HL], val);
+                extra_mCycles = 2;
+            }
+            else
+            {
+                val = registers.bytes[regIndex];
+                uint8_t highNibble = val & 0xF0;
+                uint8_t lowNibble = val & 0x0F;
+                registers.bytes[regIndex] = (highNibble >> 4) | (lowNibble << 4);
+            }
+
+            // Zero subtract, half carry, and carry flags
+            registers.bytes[F] |= val == 0? ZeroFlag : 0;
+            registers.bytes[F] &= ~AddSubFlag;
+            registers.bytes[F] &= ~HalfCarryFlag;
+            registers.bytes[F] &= ~CarryFlag;
+            break;
+        }
+        case PrefixSRL:
+        {
+            // Shift right logical. Carry bit comes from lsb
+            bool setCarry = false;
+            if (useHL)
+            {
+                val = mmu->ReadFromAddress(registers.shorts[HL]);
+                setCarry = val & 0x01;
+                val = val >> 1;
+                mmu->WriteToAddress(registers.shorts[HL], val);
+                extra_mCycles = 2;
+            }
+            else
+            {
+                val = registers.bytes[regIndex];
+                setCarry = val & 0x01;
+                val = val >> 1;
+                registers.bytes[regIndex] = val;
+            }
+
+            // Zero subtract, half carry, and carry flags
+            registers.bytes[F] |= setCarry? CarryFlag : 0;
+            registers.bytes[F] |= val == 0? ZeroFlag : 0;
+            registers.bytes[F] &= ~HalfCarryFlag;
+            registers.bytes[F] &= ~AddSubFlag;
+            break;
+        }
+    }
+
+    return extra_mCycles; 
 }

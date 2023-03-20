@@ -57,6 +57,7 @@ void Display::FrameThreadProc()
     displaying = true;
     while (true)
     {
+        continue;
         // use a keypress to break out of here
         char key = (char) cv::waitKey(30);   // explicit cast
         if (key == 27) break; 
@@ -103,6 +104,7 @@ void Display::FrameThreadProc()
         // complex: draw that which changes
 
         // flash to curFrame object
+        std::this_thread::sleep_for(16ms);
         
 
         // one scanline takes 456 clock cycles, and goes status 2 -> 3 -> 0

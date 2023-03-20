@@ -27,6 +27,8 @@ Some blogs where others have implemented the same, and written various levels of
 Som etest roms: https://gbdev.gg8.se/wiki/articles/Test_ROMs and their download package: https://github.com/c-sp/gameboy-test-roms/releases
 
 Helpful links: 
++ https://gb-archive.github.io/salvage/decoding_gbz80_opcodes/Decoding%20Gamboy%20Z80%20Opcodes.html#cb
+
 + https://github.com/espressif/esp32-nesemu  
 
 + https://arstechnica.com/gaming/2011/08/accuracy-takes-power-one-mans-3ghz-quest-to-build-a-perfect-snes-emulator/  
