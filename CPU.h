@@ -36,18 +36,18 @@ private:
 
     enum EightBitRegisters
     {
-        A = 0,
-        F,
-        B,
+        F = 0,
+        A,
         C,
-        D,
+        B,
         E,
-        H,
+        D,
         L,
-        S,
+        H,
         P,
-        Pr,
+        S,
         Co,
+        Pr,
     };
 
     union Registers

@@ -268,6 +268,10 @@ inline void CPU::Add8(uint8_t A, uint8_t B, uint8_t& C)
     {
         registers.bytes[F] |= HalfCarryFlag;
     }
+    else
+    {
+        registers.bytes[F] &= ~HalfCarryFlag;
+    }
 
     // check full carry flag
     uint16_t r = (uint16_t)A + (uint16_t)B;
@@ -277,11 +281,19 @@ inline void CPU::Add8(uint8_t A, uint8_t B, uint8_t& C)
     {
         registers.bytes[F] |= CarryFlag;
     }
+    else
+    {
+        registers.bytes[F] &= ~CarryFlag;
+    }
 
     // check zero:
     if (r == 0)
     {
         registers.bytes[F] |= ZeroFlag;
+    }
+    else
+    {
+        registers.bytes[F] &= ~ZeroFlag;
     }
 
     // Reset subtraction flag
@@ -295,6 +307,10 @@ inline void CPU::Inc8(uint8_t& A)
     {
         registers.bytes[F] |= HalfCarryFlag;
     }
+    else
+    {
+        registers.bytes[F] &= ~HalfCarryFlag;
+    }
 
     A = A + 1;
 
@@ -302,6 +318,10 @@ inline void CPU::Inc8(uint8_t& A)
     if (A == 0)
     {
         registers.bytes[F] |= ZeroFlag;
+    }
+    else
+    {
+        registers.bytes[F] &= ~ZeroFlag;
     }
 
     // reset the subtract flag
@@ -315,17 +335,25 @@ inline void CPU::Dec8(uint8_t& A)
     {
         registers.bytes[F] |= HalfCarryFlag;
     }
+    else
+    {
+        registers.bytes[F] &= ~HalfCarryFlag;
+    }
 
     A = A - 1;
 
-    // check zero:
+    // set or clear zero flag
     if (A == 0)
     {
         registers.bytes[F] |= ZeroFlag;
     }
+    else
+    {
+        registers.bytes[F] &= ~ZeroFlag;
+    }
 
     // Activate the subtract flag
-    registers.bytes[F] &= AddSubFlag;
+    registers.bytes[F] |= AddSubFlag;
 }
 
 inline void CPU::Sub8(uint8_t A, uint8_t B, uint8_t& C)
@@ -334,6 +362,10 @@ inline void CPU::Sub8(uint8_t A, uint8_t B, uint8_t& C)
     if ((((A & 0xf) - (B & 0xf)) & 0x10) == 0x10)
     {
         registers.bytes[F] |= HalfCarryFlag;
+    }
+    else
+    {
+        registers.bytes[F] &= ~HalfCarryFlag;
     }
 
     // check full carry flag
@@ -344,11 +376,19 @@ inline void CPU::Sub8(uint8_t A, uint8_t B, uint8_t& C)
     {
         registers.bytes[F] |= CarryFlag;
     }
+    else
+    {
+        registers.bytes[F] &= ~CarryFlag;
+    }
 
     // Check zero:
     if (r == 0)
     {
         registers.bytes[F] |= ZeroFlag;
+    }
+    else
+    {
+        registers.bytes[F] &= ~ZeroFlag;
     }
 
     // activate subtraction flag
@@ -362,6 +402,10 @@ inline void CPU::AddC8(uint8_t A, uint8_t B, uint8_t& C)
     {
         registers.bytes[F] |= HalfCarryFlag;
     }
+    else
+    {
+        registers.bytes[F] &= ~HalfCarryFlag;
+    }
 
     // check full carry flag
     uint16_t r = (uint16_t)A + (uint16_t)B + (uint16_t)(registers.bytes[F] & CarryFlag >> 4);
@@ -371,11 +415,19 @@ inline void CPU::AddC8(uint8_t A, uint8_t B, uint8_t& C)
     {
         registers.bytes[F] |= CarryFlag;
     }
+    else
+    {
+        registers.bytes[F] &= ~CarryFlag;
+    }
 
     // check zero:
     if (r == 0)
     {
         registers.bytes[F] |= ZeroFlag;
+    }
+    else
+    {
+        registers.bytes[F] &= ~ZeroFlag;
     }
 
     // Reset subtraction flag
@@ -389,6 +441,10 @@ inline void CPU::SubC8(uint8_t A, uint8_t B, uint8_t& C)
     {
         registers.bytes[F] |= HalfCarryFlag;
     }
+    else
+    {
+        registers.bytes[F] &= ~HalfCarryFlag;
+    }
 
     // check full carry flag
     uint16_t r = (uint16_t)A - (uint16_t)B - (uint16_t)(registers.bytes[F] & CarryFlag >> 4);
@@ -398,11 +454,19 @@ inline void CPU::SubC8(uint8_t A, uint8_t B, uint8_t& C)
     {
         registers.bytes[F] |= CarryFlag;
     }
+    else
+    {
+        registers.bytes[F] &= ~CarryFlag;
+    }
 
     // Check zero:
     if (r == 0)
     {
         registers.bytes[F] |= ZeroFlag;
+    }
+    else
+    {
+        registers.bytes[F] &= ~ZeroFlag;
     }
 
     // activate subtraction flag
@@ -417,6 +481,10 @@ inline void CPU::And8(uint8_t A, uint8_t B, uint8_t& C)
     if (C == 0)
     {
         registers.bytes[F] |= ZeroFlag;
+    }
+    else
+    {
+        registers.bytes[F] &= ~ZeroFlag;
     }
 
     // reset subtraction flag
@@ -438,6 +506,10 @@ inline void CPU::Or8(uint8_t A, uint8_t B, uint8_t& C)
     {
         registers.bytes[F] |= ZeroFlag;
     }
+    else
+    {
+        registers.bytes[F] &= ~ZeroFlag;
+    }
 
     // reset subtraction flag
     registers.bytes[F] &= ~AddSubFlag;
@@ -458,6 +530,10 @@ inline void CPU::Xor8(uint8_t A, uint8_t B, uint8_t& C)
     {
         registers.bytes[F] |= ZeroFlag;
     }
+    else
+    {
+        registers.bytes[F] &= ~ZeroFlag;
+    }
 
     // reset subtraction flag
     registers.bytes[F] &= ~AddSubFlag;
@@ -476,6 +552,10 @@ inline void CPU::Cp8(uint8_t A, uint8_t B)
     {
         registers.bytes[F] |= HalfCarryFlag;
     }
+    else
+    {
+        registers.bytes[F] &= ~HalfCarryFlag;
+    }
 
     // check full carry flag
     uint16_t r = (uint16_t)A - (uint16_t)B;
@@ -484,11 +564,19 @@ inline void CPU::Cp8(uint8_t A, uint8_t B)
     {
         registers.bytes[F] |= CarryFlag;
     }
+    else
+    {
+        registers.bytes[F] &= ~CarryFlag;
+    }
 
     // Check zero:
     if (r == 0)
     {
         registers.bytes[F] |= ZeroFlag;
+    }
+    else
+    {
+        registers.bytes[F] &= ~ZeroFlag;
     }
 
     // activate subtraction flag
@@ -502,6 +590,11 @@ inline void CPU::Add16(uint16_t& A, uint16_t& B, uint16_t& C)
     {
         registers.bytes[F] |= HalfCarryFlag;
     }
+    else
+    {
+        registers.bytes[F] &= ~HalfCarryFlag;
+    }
+    
 
     // check full carry flag
     uint32_t r = (uint32_t)A + (uint32_t)B;
@@ -510,6 +603,10 @@ inline void CPU::Add16(uint16_t& A, uint16_t& B, uint16_t& C)
     if (r & 0x10000)
     {
         registers.bytes[F] |= CarryFlag;
+    }
+    else
+    {
+        registers.bytes[F] &= ~CarryFlag;
     }
 
     // Reset subtraction flag
@@ -731,8 +828,12 @@ int CPU::ExecuteNextInstruction()
         {
             pcChanged = true;
             // Push current PC onto stack and jump to address in next 2 bytes
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
+            printf("Push current PC: %x. Jumping to %x\n",
+                registers.shorts[PC]+3,
+                mmu->ReadFromAddress(registers.shorts[PC] + 1));
+            mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 3));
+            mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 3) >> 8));
+            --registers.shorts[SP];
             registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
             mCycles += 6;
             break;
@@ -743,8 +844,9 @@ int CPU::ExecuteNextInstruction()
             // Push current PC onto stack and jump to address in next 2 bytes if carry flag is set
             if (registers.bytes[F] & CarryFlag)
             {
-                mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
-                mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
+                mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 3));
+                mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 3) >> 8));
+                --registers.shorts[SP];
                 registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 mCycles += 6;
             }
@@ -761,8 +863,9 @@ int CPU::ExecuteNextInstruction()
             // Push current PC onto stack and jump to address in next 2 bytes if carry flag is not set
             if (!(registers.bytes[F] & CarryFlag))
             {
-                mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
-                mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
+                mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 3));
+                mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 3) >> 8));
+                --registers.shorts[SP];
                 registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 mCycles += 6;
             }
@@ -779,8 +882,9 @@ int CPU::ExecuteNextInstruction()
             // Push current PC onto stack and jump to address in next 2 bytes if zero flag is set
             if (registers.bytes[F] & ZeroFlag)
             {
-                mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
-                mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
+                mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 3));
+                mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 3) >> 8));
+                --registers.shorts[SP];
                 registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 mCycles += 6;
             }
@@ -797,8 +901,9 @@ int CPU::ExecuteNextInstruction()
             // Push current PC onto stack and jump to address in next 2 bytes if zero flag is not set
             if (!(registers.bytes[F] & ZeroFlag))
             {
-                mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
-                mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
+                mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 3));
+                mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 3) >> 8));
+                --registers.shorts[SP];
                 registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
                 mCycles += 6;
             }
@@ -814,9 +919,12 @@ int CPU::ExecuteNextInstruction()
         {
             pcChanged = true;
             // Pop 2 bytes from stack and jump to that address
-            registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[SP]);
-            registers.shorts[PC] |= mmu->ReadFromAddress(registers.shorts[SP] + 1) << 8;
-            registers.shorts[SP] += 2;
+            uint16_t val = (mmu->ReadFromAddress(registers.shorts[SP]+1) << 8) | (mmu->ReadFromAddress(registers.shorts[SP] + 2));
+
+            printf("Return to %x, %d\n", val, val);
+            registers.shorts[PC] = mmu->ReadFromAddress(++registers.shorts[SP]) << 8;
+            uint16_t topBits = mmu->ReadFromAddress(++registers.shorts[SP]);
+            registers.shorts[PC] |= topBits;
             mCycles += 4;
             break;
         }
@@ -824,9 +932,8 @@ int CPU::ExecuteNextInstruction()
         {
             pcChanged = true;
             // Pop 2 bytes from stack and jump to that address
-            registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[SP]);
-            registers.shorts[PC] |= mmu->ReadFromAddress(registers.shorts[SP] + 1) << 8;
-            registers.shorts[SP] += 2;
+            registers.shorts[PC] = mmu->ReadFromAddress(++registers.shorts[SP]) << 8;
+            registers.shorts[PC] |= mmu->ReadFromAddress(++registers.shorts[SP]);
             // Enable interrupts
             enableInterruptsNextCycle = true;
             mCycles += 4;
@@ -838,9 +945,8 @@ int CPU::ExecuteNextInstruction()
             // Pop 2 bytes from stack and jump to that address if carry flag is set
             if (registers.bytes[F] & CarryFlag)
             {
-                registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[SP]);
-                registers.shorts[PC] |= mmu->ReadFromAddress(registers.shorts[SP] + 1) << 8;
-                registers.shorts[SP] += 2;
+                registers.shorts[PC] = mmu->ReadFromAddress(++registers.shorts[SP]) << 8;
+                registers.shorts[PC] |= mmu->ReadFromAddress(++registers.shorts[SP]);
                 mCycles += 5;
             }
             else
@@ -855,9 +961,8 @@ int CPU::ExecuteNextInstruction()
             // Pop 2 bytes from stack and jump to that address if carry flag is not set
             if (!(registers.bytes[F] & CarryFlag))
             {
-                registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[SP]);
-                registers.shorts[PC] |= mmu->ReadFromAddress(registers.shorts[SP] + 1) << 8;
-                registers.shorts[SP] += 2;
+                registers.shorts[PC] = mmu->ReadFromAddress(++registers.shorts[SP]) << 8;
+                registers.shorts[PC] |= mmu->ReadFromAddress(++registers.shorts[SP]);
                 mCycles += 5;
             }
             else
@@ -872,9 +977,8 @@ int CPU::ExecuteNextInstruction()
             // Pop 2 bytes from stack and jump to that address if zero flag is set
             if (registers.bytes[F] & ZeroFlag)
             {
-                registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[SP]);
-                registers.shorts[PC] |= mmu->ReadFromAddress(registers.shorts[SP] + 1) << 8;
-                registers.shorts[SP] += 2;
+                registers.shorts[PC] = mmu->ReadFromAddress(++registers.shorts[SP]) << 8;
+                registers.shorts[PC] |= mmu->ReadFromAddress(++registers.shorts[SP]);
                 mCycles += 5;
             }
             else
@@ -889,9 +993,8 @@ int CPU::ExecuteNextInstruction()
             // Pop 2 bytes from stack and jump to that address if zero flag is not set
             if (!(registers.bytes[F] & ZeroFlag))
             {
-                registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[SP]);
-                registers.shorts[PC] |= mmu->ReadFromAddress(registers.shorts[SP] + 1) << 8;
-                registers.shorts[SP] += 2;
+                registers.shorts[PC] = mmu->ReadFromAddress(++registers.shorts[SP]) << 8;
+                registers.shorts[PC] |= mmu->ReadFromAddress(++registers.shorts[SP]);
                 mCycles += 5;
             }
             else
@@ -906,8 +1009,9 @@ int CPU::ExecuteNextInstruction()
         {
             pcChanged = true;
             // Push current PC onto stack and jump to address 0x0000
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
+            mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
+            mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
+            --registers.shorts[SP];
             registers.shorts[PC] = 0x0000;
             mCycles += 4;
             break;
@@ -916,8 +1020,9 @@ int CPU::ExecuteNextInstruction()
         {
             pcChanged = true;
             // Push current PC onto stack and jump to address 0x0008
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
+            mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
+            mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
+            --registers.shorts[SP];
             registers.shorts[PC] = 0x0008;
             mCycles += 4;
             break;
@@ -926,8 +1031,9 @@ int CPU::ExecuteNextInstruction()
         {
             pcChanged = true;
             // Push current PC onto stack and jump to address 0x0010
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
+            mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
+            mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
+            --registers.shorts[SP];
             registers.shorts[PC] = 0x0010;
             mCycles += 4;
             break;
@@ -936,8 +1042,9 @@ int CPU::ExecuteNextInstruction()
         {
             pcChanged = true;
             // Push current PC onto stack and jump to address 0x0018
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
+            mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
+            mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
+            --registers.shorts[SP];
             registers.shorts[PC] = 0x0018;
             mCycles += 4;
             break;
@@ -946,8 +1053,9 @@ int CPU::ExecuteNextInstruction()
         {
             pcChanged = true;
             // Push current PC onto stack and jump to address 0x0020
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
+            mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
+            mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
+            --registers.shorts[SP];
             registers.shorts[PC] = 0x0020;
             mCycles += 4;
             break;
@@ -956,8 +1064,9 @@ int CPU::ExecuteNextInstruction()
         {
             pcChanged = true;
             // Push current PC onto stack and jump to address 0x0028
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
+            mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
+            mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
+            --registers.shorts[SP];
             registers.shorts[PC] = 0x0028;
             mCycles += 4;
             break;
@@ -966,8 +1075,9 @@ int CPU::ExecuteNextInstruction()
         {
             pcChanged = true;
             // Push current PC onto stack and jump to address 0x0030
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
+            mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
+            mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
+            --registers.shorts[SP];
             registers.shorts[PC] = 0x0030;
             mCycles += 4;
             break;
@@ -976,8 +1086,9 @@ int CPU::ExecuteNextInstruction()
         {
             pcChanged = true;
             // Push current PC onto stack and jump to address 0x0038
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 2]);
+            mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
+            mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
+            --registers.shorts[SP];
             registers.shorts[PC] = 0x0038;
             mCycles += 4;
             break;
@@ -2429,32 +2540,32 @@ int CPU::ExecuteNextInstruction()
         // Push 16 bit register onto stack
         case PUSH_BC:
         {
-            mmu->WriteToAddress(registers.shorts[SP] - 1, registers.bytes[B]);
-            mmu->WriteToAddress(registers.shorts[SP] - 2, registers.bytes[C]);
-            registers.shorts[SP] -= 2;
+            mmu->WriteToAddress(registers.shorts[SP], registers.bytes[B]);
+            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[C]);
+            registers.shorts[SP] --;
             mCycles += 4;
             break;
         }
         case PUSH_DE:
         {
-            mmu->WriteToAddress(registers.shorts[SP] - 1, registers.bytes[D]);
-            mmu->WriteToAddress(registers.shorts[SP] - 2, registers.bytes[E]);
-            registers.shorts[SP] -= 2;
+            mmu->WriteToAddress(registers.shorts[SP], registers.bytes[D]);
+            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[E]);
+            registers.shorts[SP] --;
             mCycles += 4;
             break;
         }
         case PUSH_HL:
         {
-            mmu->WriteToAddress(registers.shorts[SP] - 1, registers.bytes[H]);
-            mmu->WriteToAddress(registers.shorts[SP] - 2, registers.bytes[L]);
+            mmu->WriteToAddress(registers.shorts[SP], registers.bytes[H]);
+            mmu->WriteToAddress(registers.shorts[SP] - 1, registers.bytes[L]);
             registers.shorts[SP] -= 2;
             mCycles += 4;
             break;
         }
         case PUSH_AF:
         {
-            mmu->WriteToAddress(registers.shorts[SP] - 1, registers.bytes[A]);
-            mmu->WriteToAddress(registers.shorts[SP] - 2, registers.bytes[F]);
+            mmu->WriteToAddress(registers.shorts[SP], registers.bytes[A]);
+            mmu->WriteToAddress(registers.shorts[SP] - 1, registers.bytes[F]);
             registers.shorts[SP] -= 2;
             mCycles += 4;
             break;
@@ -2463,33 +2574,29 @@ int CPU::ExecuteNextInstruction()
         // Pop 16 bit register from stack
         case POP_BC:
         {
-            registers.bytes[C] = mmu->ReadFromAddress(registers.shorts[SP]);
-            registers.bytes[B] = mmu->ReadFromAddress(registers.shorts[SP] + 1);
-            registers.shorts[SP] += 2;
+            registers.bytes[C] = mmu->ReadFromAddress(++registers.shorts[SP]);
+            registers.bytes[B] = mmu->ReadFromAddress(++registers.shorts[SP]);
             mCycles += 3;
             break;
         }
         case POP_DE:
         {
-            registers.bytes[E] = mmu->ReadFromAddress(registers.shorts[SP]);
-            registers.bytes[D] = mmu->ReadFromAddress(registers.shorts[SP] + 1);
-            registers.shorts[SP] += 2;
+            registers.bytes[E] = mmu->ReadFromAddress(++registers.shorts[SP]);
+            registers.bytes[D] = mmu->ReadFromAddress(++registers.shorts[SP] + 1);
             mCycles += 3;
             break;
         }
         case POP_HL:
         {
-            registers.bytes[L] = mmu->ReadFromAddress(registers.shorts[SP]);
-            registers.bytes[H] = mmu->ReadFromAddress(registers.shorts[SP] + 1);
-            registers.shorts[SP] += 2;
+            registers.bytes[L] = mmu->ReadFromAddress(++registers.shorts[SP]);
+            registers.bytes[H] = mmu->ReadFromAddress(++registers.shorts[SP]);
             mCycles += 3;
             break;
         }
         case POP_AF:
         {
-            registers.bytes[F] = mmu->ReadFromAddress(registers.shorts[SP]);
-            registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[SP] + 1);
-            registers.shorts[SP] += 2;
+            registers.bytes[F] = mmu->ReadFromAddress(++registers.shorts[SP]);
+            registers.bytes[A] = mmu->ReadFromAddress(++registers.shorts[SP]);
             mCycles += 3;
             break;
         }
@@ -2515,11 +2622,13 @@ int CPU::ExecuteNextInstruction()
     printf("instruction: %x  at PC: %d  %x\n", instruction, oldPC, oldPC);
 
     // Print all registers for debug
-    printf("A: %x\tB: %x\tC: %x\tD: %x\nE: %x\tH: %x\tL: %x\nS: %x\tP: %x\nF: %x\tPC: %x\n",
+    printf("A: %x\tB: %x\tC: %x\tD: %x\nE: %x\tH: %x\tL: %x\tF: %x\n",
             registers.bytes[A], registers.bytes[B], registers.bytes[C], registers.bytes[D], 
             registers.bytes[E], registers.bytes[H], registers.bytes[L], 
-            registers.bytes[S], registers.bytes[P], 
-            registers.bytes[F], registers.shorts[PC]);
+            registers.bytes[F]);
+    printf("AF: %x\tBC: %x\tDE: %x\tHL: %x\nSP: %x\tPC: %x\n",
+            registers.shorts[AF], registers.shorts[BC], registers.shorts[DE], registers.shorts[HL], 
+            registers.shorts[SP], registers.shorts[PC]);
 
     // Update PC if a jump instruction has not been executed
     if (!pcChanged)
