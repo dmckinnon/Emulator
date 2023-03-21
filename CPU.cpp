@@ -86,6 +86,13 @@ void CPU::ExecuteCycles(int numMCycles)
     clockDivider += 4*numMCycles;
     mmu->WriteToDivRegister_Allowed(clockDivider >> 8);
 
+    // Every 456 cycles we signal display so it can draw another scanline
+    // This is independent of other timers
+    if (clockDivider % 456 == 0)
+    {
+        SignalDisplayForNextScanline();
+    }
+
 
     // Note: clock must be enabled to update clock
     bool isClockEnabled = mmu->ReadFromAddress(MMU::TMCRegisterAddress) & MMU::ClockEnableBit;
@@ -253,7 +260,7 @@ void CPU::ExecuteCode()
             break;
         }
 
-        std::this_thread::sleep_for(1ms);
+        //std::this_thread::sleep_for(1ms);
     }
 
     // end execution
@@ -2358,14 +2365,16 @@ int CPU::ExecuteNextInstruction()
         // Load and store from absolute 8 bit address offset by 0xFF00
         case LOAD_H_a8_A:
         {
-            mmu->WriteToAddress(MMU::ioRegistersOffset + mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
+            uint8_t a8 = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+            mmu->WriteToAddress(MMU::ioRegistersOffset + a8, registers.bytes[A]);
             registers.shorts[PC] ++;
             mCycles += 3;
             break;
         }
         case LOAD_H_A_a8:
         {
-            registers.bytes[A] = mmu->ReadFromAddress(MMU::ioRegistersOffset + mmu->ReadFromAddress(registers.shorts[PC] + 1));
+            uint8_t a8 = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+            registers.bytes[A] = mmu->ReadFromAddress(MMU::ioRegistersOffset + a8);
             registers.shorts[PC] ++;
             mCycles += 3;
             break;
@@ -2629,6 +2638,13 @@ int CPU::ExecuteNextInstruction()
     printf("AF: %x\tBC: %x\tDE: %x\tHL: %x\nSP: %x\tPC: %x\n",
             registers.shorts[AF], registers.shorts[BC], registers.shorts[DE], registers.shorts[HL], 
             registers.shorts[SP], registers.shorts[PC]);
+
+    if (registers.shorts[PC] >= 0x40 && registers.shorts[PC] < 0x55)
+    {
+        // capture tile copying for logo
+        registers.shorts[PC] ++;
+        registers.shorts[PC] --;
+    }
 
     // Update PC if a jump instruction has not been executed
     if (!pcChanged)

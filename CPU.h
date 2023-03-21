@@ -1,6 +1,7 @@
 #include "Rom.h"
 #include "MMU.h"
 #include <cstdint>
+#include <functional>
 
 class CPU
 {
@@ -11,12 +12,17 @@ public:
 
     void ExecuteCode();
 
-    void Execute();
+    void SetDisplaySignalFunc(std::function<void()> signalDisplayForNextScanline)
+    {
+        SignalDisplayForNextScanline = signalDisplayForNextScanline;
+    }
 
     bool Executing() 
     {
         return executing;
     }
+
+
 
     void SetVBlankInterrupt();
     void SetLCDStatInterrupt();
@@ -79,6 +85,8 @@ private:
     bool executing;
 
     void InitialiseRegisters();
+
+    std::function<void()> SignalDisplayForNextScanline;
 
     // This processes clock cycles and anything related,
     // such as timers and interrupts

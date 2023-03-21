@@ -24,6 +24,9 @@ Gameboy::Gameboy(std::shared_ptr<Rom> systemRom) :
             //std::this_thread::sleep_for(std::chrono::milliseconds(5));
         })
 {
+    cpu.SetDisplaySignalFunc([this](){
+        this->display.ClockSignalForScanline();
+    });
 }
 
 Gameboy::~Gameboy()
@@ -49,7 +52,6 @@ bool Gameboy::Run()
 {
     using namespace std::chrono_literals;
     // Create the display thread and CPU thread
-    //auto cpuThread = std::thread([this](){cpu.ExecuteCode(rom);});
 
     // cpu thread
     auto cpuThread = std::thread([this](){

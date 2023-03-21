@@ -2,6 +2,7 @@
 #include <functional>
 #include <thread>
 #include <mutex>
+#include <condition_variable>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -38,6 +39,8 @@ public:
 
     void StartDisplay();
 
+    void ClockSignalForScanline();
+
     bool Displaying() 
     {
         return displaying;
@@ -48,12 +51,14 @@ public:
 private:
     // need key press handlers
 
+    std::shared_ptr<MMU> mmu;
+
     // interrupt handlers
     std::function<void()> SetVBlankInterrupt;
     std::function<void()> SetLCDStatInterrupt;
     std::function<void(uint8_t)> SetJoypadInterrupt;
 
-    std::shared_ptr<MMU> mmu;
+    
 
     // Image to show in window and update at frame rate
     //uint8_t frameBuffer[GAMEBOY_HEIGHT][GAMEBOY_WIDTH];
@@ -115,6 +120,11 @@ private:
     std::thread windowThread;
     std::thread frameUpdateThread;
     void FrameThreadProc();
+
+    // mutex and condition variable for clock signaling
+    std::mutex clockSignalMutex;
+    std::condition_variable clockSignalCv;
+    bool drawNextScanline = false;
 
     // need a mutex for accessing OAM and VRAM during mode 0 and 1, but not mode 3
 

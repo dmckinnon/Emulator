@@ -11,7 +11,7 @@ Display::Display(
     std::function<void()> setVBlankInterrupt,
     std::function<void()> setLCDStatInterrupt,
     std::function<void(uint8_t)> setJoypadInterrupt) :
-    mmu(mmu),
+    mmu(memMgmntUnit),
     SetVBlankInterrupt(setVBlankInterrupt),
     SetLCDStatInterrupt(setLCDStatInterrupt),
     SetJoypadInterrupt(setJoypadInterrupt),
@@ -50,6 +50,13 @@ void Display::FrameThreadProcThunk(void* context)
     d->FrameThreadProc();
 }
 
+void Display::ClockSignalForScanline()
+{
+    std::unique_lock lk(clockSignalMutex);
+    drawNextScanline = true;
+    clockSignalCv.notify_one();
+}
+
 void Display::FrameThreadProc()
 {
     using namespace std::chrono_literals;
@@ -57,7 +64,6 @@ void Display::FrameThreadProc()
     displaying = true;
     while (true)
     {
-        continue;
         // use a keypress to break out of here
         char key = (char) cv::waitKey(30);   // explicit cast
         if (key == 27) break; 
@@ -67,28 +73,26 @@ void Display::FrameThreadProc()
         if (!IsLCDEnabled())
         {
             // if things are not all blank, draw all blank, then just wait until next period
-            //continue;
+            continue;
         }
 
         // Wait until we can consider another scanline
+        std::unique_lock lk(clockSignalMutex);
+        clockSignalCv.wait(lk, [this]{return this->drawNextScanline;});
 
-        // if its time to consider another scanline
+        // Consider the next scanline
         uint8_t currentScanLine = mmu->ReadFromAddress(MMU::ScanLineCounterAddress);
+        currentScanLine ++;
+        mmu->WriteToScanlineCounter_Allowed(currentScanLine);
 
         // confirm that currentScanline is valid
         if (currentScanLine < 0 || currentScanLine > 160)
         {
+            lk.unlock();
             continue;
         }
         
-        // Are we in vblank? If so, set explicit VBLANK interrupt
-        if (currentScanLine == VisibleScanlines)
-        {
-            SetVBlankInterrupt();
-            // during vblank, blit image to screen
-            cv::imshow("GameBoy", frameBuffer);
-        }
-        else if (currentScanLine > MaxScanlines)
+        if (currentScanLine > MaxScanlines)
         {
             // reset scan line counter
             mmu->WriteToAddress(MMU::ScanLineCounterAddress, (uint8_t)0);
@@ -98,13 +102,21 @@ void Display::FrameThreadProc()
             // draw current scan line
             DrawScanLine(frameBuffer, currentScanLine);
         }
+        else
+        {   // Are we in vblank? If so, set explicit VBLANK interrupt
+            SetVBlankInterrupt();
+            // during vblank, blit image to screen
+            cv::imshow("GameBoy", frameBuffer);
+            // sleep for a spell to maintain 60fps
+            //std::this_thread::sleep_for(2ms);
+        }
 
         // update image
         // simple: draw each scanline based on whether background or sprites or window are enabled
         // complex: draw that which changes
 
-        // flash to curFrame object
-        std::this_thread::sleep_for(16ms);
+        drawNextScanline = false;
+        lk.unlock();
         
 
         // one scanline takes 456 clock cycles, and goes status 2 -> 3 -> 0
