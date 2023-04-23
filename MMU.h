@@ -28,6 +28,13 @@ public:
 
     inline void WriteToAddress(uint16_t address, uint8_t value)
     {
+        // Debug with serial
+         if (address == 0xFF02 && value == 0x81)
+        {
+            uint8_t v = ReadFromAddress(0xFF01);
+            printf("%c\n", v);
+        }
+
         // Semaphore to allow only one writer to memory at a time
         //writeSemaphore.acquire();
         //const std::lock_guard<std::mutex> lock(oamMutex);
@@ -83,8 +90,8 @@ public:
     static constexpr int systemRomSize = 0x100;
     static const int cartridgeHeaderOffset = 0x100;
     static const int cartridgeHeaderSize = 0x50;
-    static const int cartridgeRomBank0Offset = 0x150;
-    static const int cartridgeRomBank0Size = 0x4000 - 0x150;
+    static const int cartridgeRomBank0Offset = 0x100;
+    static const int cartridgeRomBank0Size = 0x4000;
     static const int cartridgeRomBankSwitchableOffset = 0x4000;
     static const int cartridgeRomBankSwitchableSize = 0x4000;
     static const int characterRamOffset = 0x8000;

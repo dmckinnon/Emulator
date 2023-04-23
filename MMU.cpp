@@ -94,16 +94,17 @@ void MMU::LoadRomToMemory(std::shared_ptr<Rom> rom)
     // This fills up Rom bank 0 and the first switchable bank
     // If we need more banks - that is, when the program counter tries to
     // get higher - we swap out the switchable bank
-    // TODO read into this
+    // Rom bank 0 technically starts from 0; while the PC first comes
+    // in at 0x100, we need to copy the ISRs that sit in 0x00 - 0xFF
     if (rom->size < cartridgeRomBank0Size)
     {
-        memcpy(&memory[cartridgeRomBank0Offset], rom->uint8_ts, rom->size);
+        memcpy(&memory[0], rom->uint8_ts, rom->size);
     }
     else
     {
-        memcpy(&memory[cartridgeRomBank0Offset], rom->uint8_ts, cartridgeRomBank0Size);
+        memcpy(&memory[0], rom->uint8_ts, cartridgeRomBank0Size);
         // Write at most one bank, but less if ROM is smaller
-        uint16_t writeSize = std::min((unsigned int)cartridgeRomBankSwitchableSize, rom->size);
+        uint16_t writeSize = std::min((unsigned int)cartridgeRomBankSwitchableSize, rom->size - cartridgeRomBank0Size);
         memcpy(&memory[cartridgeRomBankSwitchableOffset], &rom->uint8_ts[cartridgeRomBank0Size], writeSize);
     }
 
