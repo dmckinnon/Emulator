@@ -12,6 +12,8 @@
 #define GAMEBOY_WIDTH 160
 #define GAMEBOY_HEIGHT 144
 
+#define USE_DISPLAY
+
 /*
     This class is essentially the video chip and the display.
     On desktop, it will create a GUI window and have a display

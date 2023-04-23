@@ -41,7 +41,11 @@ bool Display::IsLCDEnabled()
 
 void Display::StartDisplay()
 {
+    #ifdef USE_DISPLAY
     frameUpdateThread = std::thread(FrameThreadProcThunk, this);
+    #else
+    displaying = true;
+    #endif
 }
 
 void Display::FrameThreadProcThunk(void* context)
@@ -351,17 +355,17 @@ void Display::RenderTiles(cv::Mat& buffer, uint8_t controlReg, uint8_t curScanli
 
         // Now get the correct vertical line in the tile so we know what to draw.
         // Each line takes up two bytes of memory, to represent the colours
-        uint8_t line = (yPos % 8) / 2;
+        uint8_t line = (yPos % 8) * 2;
         uint8_t byte1 = mmu->ReadFromAddress(tileLocation + line);
-        uint8_t byte2 = mmu->ReadFromAddress(tileLocation + line + 1);
+        uint8_t byte2 = mmu->ReadFromAddress(tileLocation + line + 1);    
 
         // Now separate out the individual colour for this pixel
         // we need the xPos as a relative coordinate from 0-7 inside the tile
         // and this gives us the bit number we need from the two bytes for colour
-        uint8_t bitNumber = bgX % 8;
-        bitNumber = 0x01 << bitNumber;
-        uint8_t colourNumber = byte2 & bitNumber? 0x2 : 0x0;
-        colourNumber |= (byte1 & bitNumber? 0x1 : 0x0);
+        uint8_t bitNumber = 7 - (bgX % 8);
+        uint8_t bitPosition = 0x01 << bitNumber;
+        uint8_t colourNumber = byte2 & bitPosition? 0x2 : 0x0;
+        colourNumber |= (byte1 & bitPosition? 0x1 : 0x0);
 
         // now we have colour number - lookup palette for actual colour
         uint8_t grayscale = GetColour(colourNumber, MMU::BackgroundColourPaletteAddress);
