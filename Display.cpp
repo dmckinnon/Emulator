@@ -48,6 +48,16 @@ void Display::StartDisplay()
     #endif
 }
 
+void Display::StopDisplay()
+{
+    displaying = false;
+    if (frameUpdateThread.joinable())
+    {
+        frameUpdateThread.join();
+    }
+    
+}
+
 void Display::FrameThreadProcThunk(void* context)
 {
     Display* d = (Display*)context;
@@ -66,7 +76,7 @@ void Display::FrameThreadProc()
     using namespace std::chrono_literals;
     auto frameBuffer = cv::Mat(cv::Size(GAMEBOY_HEIGHT, GAMEBOY_WIDTH), CV_8UC1, cv::Scalar(0));
     displaying = true;
-    while (true)
+    while (displaying)
     {
         // use a keypress to break out of here
         char key = (char) cv::waitKey(30);   // explicit cast

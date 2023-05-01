@@ -40,6 +40,7 @@ public:
     bool IsLCDEnabled();
 
     void StartDisplay();
+    void StopDisplay();
 
     void ClockSignalForScanline();
 
