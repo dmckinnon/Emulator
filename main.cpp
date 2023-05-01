@@ -8,9 +8,9 @@ using namespace std;
 struct Parameters
 {
     // default to make things easier for me
-    string romFilename = "/home/dave/Emulator/cpu_instrs.gb";
+    string romFilename = "/home/dave/Emulator/tests/05-op rp.gb";
 
-};
+};  
 
 Parameters ParseArgs(int argc, char* argv[])
 {
@@ -33,7 +33,7 @@ Parameters ParseArgs(int argc, char* argv[])
 }
 
 int main(int argc, char* argv[])
-{
+{ 
     auto parameters = ParseArgs(argc, argv);
 
     // Tests:
@@ -75,7 +75,7 @@ int main(int argc, char* argv[])
     {
         cerr << "Could not load game ROM from " << parameters.romFilename << std::endl;
     }
-    if (!LoadRomFromFile("/home/dave/Emulator/systemRom.bin", systemRom))
+    if (!LoadRomFromFile("/home/dave/Emulator/systemRom_noloops.bin", systemRom))
     {
         cerr << "Could not load system ROM from " << "/home/dave/Emulator/systemRom.bin" << std::endl;
     }

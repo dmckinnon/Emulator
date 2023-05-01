@@ -32,6 +32,8 @@ Gameboy::Gameboy(std::shared_ptr<Rom> systemRom) :
 Gameboy::~Gameboy()
 {
     // join each of the cpu and display threads and destroy them
+    cpu.~CPU();
+    display.~Display();
 
     // mmu will destroy itself
 }
@@ -61,15 +63,17 @@ bool Gameboy::Run()
     display.StartDisplay();
 
     // wait for both threads to finish
-    while (display.Displaying() && cpu.Executing())
+    while (/*display.Displaying() &&*/ cpu.Executing())
     {
-        std::this_thread::sleep_for(1000ms);
+        std::this_thread::sleep_for(10ms);
     }
 
     if (cpuThread.joinable())
     {
         cpuThread.join();
     }
+
+    display.StopDisplay();
 
     // display 
 
