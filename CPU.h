@@ -67,6 +67,9 @@ private:
     #define AddSubFlag    0x40
     #define HalfCarryFlag 0x20
     #define CarryFlag     0x10
+    #define AllFlags      0xF0
+    #define MostSigBit    0x80
+    #define LeastSigBit   0x10
 
     Registers registers;
 
