@@ -17,15 +17,22 @@ Display::Display(
     SetJoypadInterrupt(setJoypadInterrupt),
     scanlineCycleCounter(0)
 {
-    
     displaying = false;
 
+#if defined(__linux) || defined(_WIN32)
+#else
+    mutex_init(&clockSignalMutex);
+#endif
 }
 
 Display::~Display()
 {
+    // On embedded, display does not contain more than one thread
+    // and destructor is never called. Just switch the device off
+#if defined(__linux) || defined(_WIN32)
     if (frameUpdateThread.joinable())
         frameUpdateThread.join();
+#endif
 }
 
 bool Display::IsLCDEnabled()
@@ -35,21 +42,28 @@ bool Display::IsLCDEnabled()
 
 void Display::StartDisplay()
 {
+#if defined(__linux) || defined(_WIN32)
     #ifdef USE_DISPLAY
     frameUpdateThread = std::thread(FrameThreadProcThunk, this);
     #else
     displaying = true;
     #endif
+#else
+    // on embedded, either main thread is CPU or main thread is display
+    // haven't decided which yet
+#endif
 }
 
 void Display::StopDisplay()
 {
+    // See dtor. Same logic applies here
+#if defined(__linux) || defined(_WIN32)
     displaying = false;
     if (frameUpdateThread.joinable())
     {
         frameUpdateThread.join();
     }
-    
+#endif
 }
 
 void Display::FrameThreadProcThunk(void* context)
@@ -60,9 +74,18 @@ void Display::FrameThreadProcThunk(void* context)
 
 void Display::ClockSignalForScanline()
 {
+#if defined(__linux) || defined(_WIN32)
     std::unique_lock lk(clockSignalMutex);
     drawNextScanline = true;
     clockSignalCv.notify_one();
+#else
+    mutex_enter_blocking(&clockSignalMutex);
+
+    drawNextScanline = true;
+    // TODO notify the main display thread
+
+    mutex_exit(&clockSignalMutex);
+#endif
 }
 
 void Display::FrameThreadProc()

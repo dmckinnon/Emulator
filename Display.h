@@ -1,13 +1,17 @@
 
 #include <functional>
+
+#if defined(__linux__) || defined(_WIN32)
 #include <thread>
 #include <mutex>
 #include <condition_variable>
-#if defined(__linux__) || defined(_WIN32)
+
 #include <opencv2/opencv.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
+#else
+#include "pico/mutex.h"
 #endif
 #include "MMU.h"
 
@@ -63,13 +67,6 @@ private:
     std::function<void()> SetLCDStatInterrupt;
     std::function<void(uint8_t)> SetJoypadInterrupt;
 
-    
-
-    // Image to show in window and update at frame rate
-    //uint8_t frameBuffer[GAMEBOY_HEIGHT][GAMEBOY_WIDTH];
-    // opencv image
-    //cv::Mat frameBuffer;
-    std::mutex imageMutex;
     bool displaying;
 
     // LCD status vars
@@ -122,13 +119,24 @@ private:
 
 
     // main display thread
+    void FrameThreadProc();
+
+#if defined(__linux) || defined(_WIN32)
+    // display threada
     std::thread windowThread;
     std::thread frameUpdateThread;
-    void FrameThreadProc();
 
     // mutex and condition variable for clock signaling
     std::mutex clockSignalMutex;
     std::condition_variable clockSignalCv;
+#else
+    // Display thread
+    // some thread object
+
+    // mutex and condition variable for clock signaling
+    mutex_t clockSignalMutex;
+    // condition variable?
+#endif
     bool drawNextScanline = false;
 
     // need a mutex for accessing OAM and VRAM during mode 0 and 1, but not mode 3

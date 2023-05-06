@@ -1,7 +1,12 @@
 #include "Gameboy.h"
 #include <string.h>
 #include <chrono>
+
+#if defined(__linux) || defined(_WIN32)
 #include <thread>
+#else
+
+#endif
 
 
 Gameboy::Gameboy(std::shared_ptr<Rom> systemRom) :
@@ -56,15 +61,22 @@ bool Gameboy::Run()
     // Create the display thread and CPU thread
 
     // cpu thread
+#if defined(__linux) || defined(_WIN32)
     auto cpuThread = std::thread([this](){
         this->cpu.ExecuteCode();
     });
+#else
+#endif
 
+    // On embedded, this becomes the display thread
+    // as it never needs to exit
     display.StartDisplay();
 
+#if defined(__linux) || defined(_WIN32)
     // wait for both threads to finish
     while (/*display.Displaying() &&*/ cpu.Executing())
     {
+
         std::this_thread::sleep_for(10ms);
     }
 
@@ -74,6 +86,7 @@ bool Gameboy::Run()
     }
 
     display.StopDisplay();
+#endif
 
     // display 
 
