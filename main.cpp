@@ -1,5 +1,9 @@
 #include <iostream>
 #include <string.h>
+#if defined(__linux__) || defined(_WIN32)
+#else
+#include "pico/stdlib.h"
+#endif
 
 #include "Gameboy.h"
 

@@ -1,7 +1,12 @@
 #pragma once
 #include "Rom.h"
+
+#if defined(__linux) || defined(_WIN32)
 #include <mutex>
-#include <semaphore>
+#else
+#include "pico/mutex.h"
+#endif
+//#include <semaphore>
 
 #define MEMORY_SIZE 0x10000
 
@@ -175,7 +180,7 @@ private:
 
     std::shared_ptr<Rom> currentRom;
 
-    std::counting_semaphore<1> writeSemaphore{1};
+    //std::counting_semaphore<1> writeSemaphore{1};
 
     int currentRomBank = 1;
     int mbc = 0;
@@ -196,6 +201,10 @@ private:
     void SwapOutRomBank(int bank);
     void HandleBanking(uint16_t address, uint8_t value);
 
+#if defined(__linux) || defined(_WIN32)
     std::mutex oamMutex;
+#else
+    mutex_t oamMutex;
+#endif
     void DoDMATransfer();
 };

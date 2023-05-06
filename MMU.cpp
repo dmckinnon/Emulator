@@ -4,6 +4,12 @@
 
 MMU::MMU(Rom& systemRom)
 {
+#if defined(__linux) || defined(_WIN32)
+#else
+    mutex_init(&oamMutex);
+    assert(mutex_is_initialized(&oamMutex));
+#endif
+
     // memory is statically allocated
     // clear all memory to 0 and then set up any specific registers
     memset(memory, 0, sizeof(memory));
@@ -282,7 +288,9 @@ void MMU::SwapOutRomBank(int bank)
 
     // Swap out the switchable bank with the bank specified
     currentRomBank = bank;
-    memcpy(&memory[cartridgeRomBankSwitchableOffset], &currentRom->uint8_ts[cartridgeRomBank0Size + (bank * cartridgeRomBankSwitchableSize)], cartridgeRomBankSwitchableSize);
+    memcpy(&memory[cartridgeRomBankSwitchableOffset],
+           &currentRom->uint8_ts[cartridgeRomBank0Size + (bank * cartridgeRomBankSwitchableSize)],
+           cartridgeRomBankSwitchableSize);
 }
 
 void MMU::SwitchRomRamMode(uint8_t value)
@@ -299,6 +307,15 @@ void MMU::DoDMATransfer()
 {
     uint16_t address = memory[DMARegisterAddress] << 8;
     // copy 160 bytes from address to OAM
+#if defined(__linux) || defined(_WIN32)
     std::lock_guard<std::mutex> lock(oamMutex);
+#else
+    mutex_enter_blocking(&oamMutex);
+#endif
     memcpy(memory+address, memory+oamOffset, oamSize);
+
+#if defined(__linux) || defined(_WIN32)
+#else
+    mutex_exit(&oamMutex);
+#endif
 }

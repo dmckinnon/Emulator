@@ -3,10 +3,12 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#if defined(__linux__) || defined(_WIN32)
 #include <opencv2/opencv.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
+#endif
 #include "MMU.h"
 
 #define GAMEBOY_WIDTH 160
@@ -131,9 +133,17 @@ private:
 
     // need a mutex for accessing OAM and VRAM during mode 0 and 1, but not mode 3
 
+
     void UpdateLCDStatus();
+#if defined(__linux__) || defined(_WIN32)
     void DrawScanLine(cv::Mat& buffer, uint8_t curScanline);
     void RenderTiles(cv::Mat& buffer, uint8_t controlReg, uint8_t curScanline);
     void RenderSprites(cv::Mat& buffer, uint8_t controlReg, uint8_t curScanline);
+/*#else
+    void UpdateLCDStatus();
+    void DrawScanLine(uint8_t** buffer, uint8_t curScanline);
+    void RenderTiles(uint8_t** buffer, uint8_t controlReg, uint8_t curScanline);
+    void RenderSprites(uint8_t** buffer, uint8_t controlReg, uint8_t curScanline);*/
+#endif
     uint8_t GetColour(uint8_t colourNum, uint16_t paletteAddress);
 };

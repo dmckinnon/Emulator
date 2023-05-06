@@ -16,16 +16,10 @@ Display::Display(
     SetLCDStatInterrupt(setLCDStatInterrupt),
     SetJoypadInterrupt(setJoypadInterrupt),
     scanlineCycleCounter(0)
-    //curFrame("/home/dave/Emulator/blank.png")
 {
     
     displaying = false;
 
-    // TODO when LCD is disabled set mode to 1
-
-    // TODO how do the tiles get into OAM in the first place? 
-    // especilaly systemRom tiles
-    // boot rom should copy logo
 }
 
 Display::~Display()
@@ -73,8 +67,11 @@ void Display::ClockSignalForScanline()
 
 void Display::FrameThreadProc()
 {
+    #if defined(__linux__) || defined(_WIN32)
     using namespace std::chrono_literals;
+    
     auto frameBuffer = cv::Mat(cv::Size(GAMEBOY_HEIGHT, GAMEBOY_WIDTH), CV_8UC1, cv::Scalar(0));
+    
     displaying = true;
     while (displaying)
     {
@@ -120,7 +117,9 @@ void Display::FrameThreadProc()
         {   // Are we in vblank? If so, set explicit VBLANK interrupt
             SetVBlankInterrupt();
             // during vblank, blit image to screen
+            #if defined(__linux__) || defined(_WIN32)
             cv::imshow("GameBoy", frameBuffer);
+            #endif
             // sleep for a spell to maintain 60fps
             //std::this_thread::sleep_for(2ms);
         }
@@ -137,6 +136,9 @@ void Display::FrameThreadProc()
         // vblank is mode 1
         // when mode changes to 0, 1, 2 then this is LCD interrupt
     }
+
+    #endif
+
     displaying = false;
 }
 
@@ -221,7 +223,7 @@ void Display::UpdateLCDStatus()
     // Write status back out
     mmu->WriteToAddress(MMU::LCDStatusAddress, currentStatus);
 }
-
+#if defined(__linux__) || defined(_WIN32)
 void Display::DrawScanLine(cv::Mat& buffer, uint8_t curScanline)
 {
     uint8_t lcdControl = mmu->ReadFromAddress(MMU::LCDControlAddress);
@@ -382,7 +384,9 @@ void Display::RenderTiles(cv::Mat& buffer, uint8_t controlReg, uint8_t curScanli
 
         // set pixel colour
         // actual gameboy has RGB; for windows, just doing grayscale
+        #if defined(__linux__) || defined(_WIN32)
         buffer.at<uchar>(cv::Point(i, curScanline)) = grayscale;
+        #endif
     }
 }
 
@@ -463,6 +467,7 @@ void Display::RenderSprites(cv::Mat& buffer, uint8_t controlReg, uint8_t curScan
         }
     }
 }
+#endif
 
 uint8_t Display::GetColour(uint8_t colourNum, uint16_t paletteAddress)
 {
