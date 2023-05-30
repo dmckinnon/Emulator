@@ -17,8 +17,11 @@ add_executable(${PROJECT_NAME}
     main.cpp
     CPU.cpp
     Rom.cpp 
-    Display.cpp 
+    Display.cpp
+    st7789_driver.cpp
     Gameboy.cpp 
+    Adafruit_GFX.cpp
+    glcdfont.c
     Joypad.cpp 
     MMU.cpp 
 )

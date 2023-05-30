@@ -1,8 +1,9 @@
 #include <iostream>
 #include <string.h>
-#if defined(__linux__) || defined(_WIN32)
-#else
+#ifdef RASPBERRYPI_PICO
+#include <stdio.h>
 #include "pico/stdlib.h"
+
 #endif
 
 #include "Gameboy.h"
@@ -38,46 +39,32 @@ Parameters ParseArgs(int argc, char* argv[])
 
 int main(int argc, char* argv[])
 { 
+    stdio_init_all();
+
     auto parameters = ParseArgs(argc, argv);
 
-    // Tests:
-    // load 255 into register A and B
-    // add A and B
-    // check result
-    // PASSED
-    //
-    // load two numbers into registers
-    // write these to memory at 0 and 1
-    // read these back into registers
-    // PASSED
-
-    // TODO before any further tests:
-    // sort out the memory mapping
-
-    //
-    // load an address into H and L
-    // load a value into memory at HL
-    // read value from memory at HL
-    //
-    // Test the funky 8 bit load instructions
-    //
-    // Load a value into memory at 0x02
-    // and add it to a value loaded into A
-    //
-    // Test address offsetting
-
-    // Need also:
-    // copy ROM into read-only memory
-    // IO interrupts
-    // graphics??
-    // automated testing
+    // Start display
+    std::shared_ptr<ST7789> lcd;
+#ifdef RASPBERRYPI_PICO
+    lcd = make_shared<ST7789>();
+#endif
 
     // load rom from file to uint8_t buffer
     std::shared_ptr<Rom> systemRom = make_shared<Rom>(); 
-    std::shared_ptr<Rom> gameRom = make_shared<Rom>(); 
+    std::shared_ptr<Rom> gameRom = make_shared<Rom>();
+
+    // get ROM from SD Card, ostensibly
+
     if (!LoadRomFromFile(parameters.romFilename, gameRom))
     {
-        cerr << "Could not load game ROM from " << parameters.romFilename << std::endl;
+        if (lcd)
+        {
+
+        }
+        else
+        {
+            cerr << "Could not load game ROM from " << parameters.romFilename << std::endl;
+        }
     }
     if (!LoadRomFromFile("/home/dave/Emulator/systemRom_noloops.bin", systemRom))
     {
@@ -89,7 +76,7 @@ int main(int argc, char* argv[])
     std::cout << "Size of game ROM: " << gameRom->size << std::endl;
 
     {
-        Gameboy g = Gameboy(systemRom);
+        Gameboy g = Gameboy(systemRom, lcd);
         g.LoadRom(gameRom);
         g.Run();
     }

@@ -1,7 +1,7 @@
 
 #include <functional>
 
-#if defined(__linux__) || defined(_WIN32)
+#ifndef RASPBERRYPI_PICO
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -12,6 +12,8 @@
 #include <opencv2/highgui.hpp>
 #else
 #include "pico/mutex.h"
+
+#include "st7789_driver.h"
 #endif
 #include "MMU.h"
 
@@ -38,6 +40,7 @@ public:
     // Args are lambdas for setting CPU interrupts
     Display(
         std::shared_ptr<MMU> memMgmntUnit,
+        std::shared_ptr<ST7789> lcd,
         std::function<void()> setVBlankInterrupt,
         std::function<void()> setLCDStatInterrupt,
         std::function<void(uint8_t)> setJoypadInterrupt);
@@ -61,6 +64,7 @@ private:
     // need key press handlers
 
     std::shared_ptr<MMU> mmu;
+    std::shared_ptr<ST7789> lcd;
 
     // interrupt handlers
     std::function<void()> SetVBlankInterrupt;
@@ -121,7 +125,7 @@ private:
     // main display thread
     void FrameThreadProc();
 
-#if defined(__linux) || defined(_WIN32)
+#ifndef RASPBERRYPI_PICO
     // display threada
     std::thread windowThread;
     std::thread frameUpdateThread;
@@ -129,6 +133,8 @@ private:
     // mutex and condition variable for clock signaling
     std::mutex clockSignalMutex;
     std::condition_variable clockSignalCv;
+
+    GFXcanvas16 canvas;
 #else
     // Display thread
     // some thread object
@@ -143,15 +149,17 @@ private:
 
 
     void UpdateLCDStatus();
-#if defined(__linux__) || defined(_WIN32)
+#ifndef RASPBERRYPI_PICO
     void DrawScanLine(cv::Mat& buffer, uint8_t curScanline);
     void RenderTiles(cv::Mat& buffer, uint8_t controlReg, uint8_t curScanline);
     void RenderSprites(cv::Mat& buffer, uint8_t controlReg, uint8_t curScanline);
 /*#else
     void UpdateLCDStatus();
-    void DrawScanLine(uint8_t** buffer, uint8_t curScanline);
-    void RenderTiles(uint8_t** buffer, uint8_t controlReg, uint8_t curScanline);
-    void RenderSprites(uint8_t** buffer, uint8_t controlReg, uint8_t curScanline);*/
+    
+    */
 #endif
+void DrawScanLine(uint8_t** buffer, uint8_t curScanline);
+    void RenderTiles(uint8_t** buffer, uint8_t controlReg, uint8_t curScanline);
+    void RenderSprites(uint8_t** buffer, uint8_t controlReg, uint8_t curScanline);
     uint8_t GetColour(uint8_t colourNum, uint16_t paletteAddress);
 };

@@ -2,18 +2,21 @@
 #include <string.h>
 #include <chrono>
 
-#if defined(__linux) || defined(_WIN32)
+#ifndef RASPBERRYPI_PICO
 #include <thread>
 #else
 
 #endif
 
 
-Gameboy::Gameboy(std::shared_ptr<Rom> systemRom) :
+Gameboy::Gameboy(
+    std::shared_ptr<Rom> systemRom,
+    std::shared_ptr<ST7789> lcd) :
     mmu(std::make_shared<MMU>(*systemRom)),
     cpu(mmu),
     display(
         mmu,
+        lcd
         // Lambda to set VBLANK interrupt in CPU
         [this](){
             this->cpu.SetVBlankInterrupt();
@@ -27,7 +30,8 @@ Gameboy::Gameboy(std::shared_ptr<Rom> systemRom) :
             this->cpu.SetJoypadInterrupt(joypadRegister);
             // debounce
             //std::this_thread::sleep_for(std::chrono::milliseconds(5));
-        })
+        },
+        lcd)
 {
     cpu.SetDisplaySignalFunc([this](){
         this->display.ClockSignalForScanline();

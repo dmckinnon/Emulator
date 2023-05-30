@@ -19,8 +19,9 @@ Display::Display(
 {
     displaying = false;
 
-#if defined(__linux) || defined(_WIN32)
-#else
+#ifdef RASPBERRYPI_PICO
+    canvas = GFXCanvas16(GAMEBOY_WIDTH, GAMEBOY_HEIGHT);
+
     mutex_init(&clockSignalMutex);
 #endif
 }
@@ -29,7 +30,7 @@ Display::~Display()
 {
     // On embedded, display does not contain more than one thread
     // and destructor is never called. Just switch the device off
-#if defined(__linux) || defined(_WIN32)
+#ifndef RASPBERRYPI_PICO
     if (frameUpdateThread.joinable())
         frameUpdateThread.join();
 #endif
@@ -42,7 +43,7 @@ bool Display::IsLCDEnabled()
 
 void Display::StartDisplay()
 {
-#if defined(__linux) || defined(_WIN32)
+#ifndef RASPBERRYPI_PICO
     #ifdef USE_DISPLAY
     frameUpdateThread = std::thread(FrameThreadProcThunk, this);
     #else
@@ -57,7 +58,7 @@ void Display::StartDisplay()
 void Display::StopDisplay()
 {
     // See dtor. Same logic applies here
-#if defined(__linux) || defined(_WIN32)
+#ifndef RASPBERRYPI_PICO
     displaying = false;
     if (frameUpdateThread.joinable())
     {
@@ -74,7 +75,7 @@ void Display::FrameThreadProcThunk(void* context)
 
 void Display::ClockSignalForScanline()
 {
-#if defined(__linux) || defined(_WIN32)
+#ifndef RASPBERRYPI_PICO
     std::unique_lock lk(clockSignalMutex);
     drawNextScanline = true;
     clockSignalCv.notify_one();
@@ -90,7 +91,7 @@ void Display::ClockSignalForScanline()
 
 void Display::FrameThreadProc()
 {
-    #if defined(__linux__) || defined(_WIN32)
+#ifndef RASPBERRYPI_PICO
     using namespace std::chrono_literals;
     
     auto frameBuffer = cv::Mat(cv::Size(GAMEBOY_HEIGHT, GAMEBOY_WIDTH), CV_8UC1, cv::Scalar(0));
@@ -246,7 +247,7 @@ void Display::UpdateLCDStatus()
     // Write status back out
     mmu->WriteToAddress(MMU::LCDStatusAddress, currentStatus);
 }
-#if defined(__linux__) || defined(_WIN32)
+
 void Display::DrawScanLine(cv::Mat& buffer, uint8_t curScanline)
 {
     uint8_t lcdControl = mmu->ReadFromAddress(MMU::LCDControlAddress);
@@ -407,9 +408,10 @@ void Display::RenderTiles(cv::Mat& buffer, uint8_t controlReg, uint8_t curScanli
 
         // set pixel colour
         // actual gameboy has RGB; for windows, just doing grayscale
-        #if defined(__linux__) || defined(_WIN32)
+#ifdef RASPBERRYPI_PICO
+#else
         buffer.at<uchar>(cv::Point(i, curScanline)) = grayscale;
-        #endif
+#endif
     }
 }
 
@@ -490,7 +492,7 @@ void Display::RenderSprites(cv::Mat& buffer, uint8_t controlReg, uint8_t curScan
         }
     }
 }
-#endif
+
 
 uint8_t Display::GetColour(uint8_t colourNum, uint16_t paletteAddress)
 {

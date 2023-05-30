@@ -16,7 +16,7 @@
 class Gameboy
 {
 public:
-    Gameboy(std::shared_ptr<Rom> rom);
+    Gameboy(std::shared_ptr<Rom> rom, std::shared_ptr<ST7789> lcd = nullptr);
     ~Gameboy();
 
     bool LoadRom(std::shared_ptr<Rom> rom);
@@ -29,10 +29,6 @@ private:
     Display display;
 
     int clockSpeed = GAMEBOY_CLOCK_HZ;
-
-    
-
-    // some graphics nonsense
 
     std::shared_ptr<Rom> rom;
 };
