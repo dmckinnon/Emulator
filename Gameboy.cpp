@@ -2,7 +2,7 @@
 #include <string.h>
 #include <chrono>
 
-#ifndef RASPBERRYPI_PICO
+#ifndef RP2040
 #include <thread>
 #else
 
@@ -16,7 +16,7 @@ Gameboy::Gameboy(
     cpu(mmu),
     display(
         mmu,
-        lcd
+        lcd,
         // Lambda to set VBLANK interrupt in CPU
         [this](){
             this->cpu.SetVBlankInterrupt();
@@ -30,8 +30,7 @@ Gameboy::Gameboy(
             this->cpu.SetJoypadInterrupt(joypadRegister);
             // debounce
             //std::this_thread::sleep_for(std::chrono::milliseconds(5));
-        },
-        lcd)
+        })
 {
     cpu.SetDisplaySignalFunc([this](){
         this->display.ClockSignalForScanline();

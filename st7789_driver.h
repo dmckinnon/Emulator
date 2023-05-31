@@ -1,5 +1,5 @@
 #pragma once
-#ifdef RASPBERRYPI_PICO
+#ifdef RP2040
 
 #include "pico.h"
 #include "pico/stdlib.h"
@@ -7,7 +7,7 @@
 #include "hardware/gpio.h"
 
 #include "Adafruit_GFX.h"
-#include "st7789_lcd.pio.h"
+#include "build/st7789_driver.pio.h"
 
 #define LCD_WIDTH 240
 #define LCD_HEIGHT 240

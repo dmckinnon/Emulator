@@ -8,21 +8,26 @@
 
 Display::Display(
     std::shared_ptr<MMU> memMgmntUnit,
+    std::shared_ptr<ST7789> lcd,
     std::function<void()> setVBlankInterrupt,
     std::function<void()> setLCDStatInterrupt,
     std::function<void(uint8_t)> setJoypadInterrupt) :
     mmu(memMgmntUnit),
+    lcd(lcd),
     SetVBlankInterrupt(setVBlankInterrupt),
     SetLCDStatInterrupt(setLCDStatInterrupt),
     SetJoypadInterrupt(setJoypadInterrupt),
+#ifdef RP2040
+    canvas(GAMEBOY_WIDTH, GAMEBOY_HEIGHT),
+#endif
     scanlineCycleCounter(0)
 {
     displaying = false;
 
-#ifdef RASPBERRYPI_PICO
-    canvas = GFXCanvas16(GAMEBOY_WIDTH, GAMEBOY_HEIGHT);
-
+#ifdef RP2040
     mutex_init(&clockSignalMutex);
+#else
+    frameBuffer = cv::Mat(cv::Size(GAMEBOY_HEIGHT, GAMEBOY_WIDTH), CV_8UC1, cv::Scalar(0));
 #endif
 }
 
@@ -30,7 +35,7 @@ Display::~Display()
 {
     // On embedded, display does not contain more than one thread
     // and destructor is never called. Just switch the device off
-#ifndef RASPBERRYPI_PICO
+#ifndef RP2040
     if (frameUpdateThread.joinable())
         frameUpdateThread.join();
 #endif
@@ -43,7 +48,7 @@ bool Display::IsLCDEnabled()
 
 void Display::StartDisplay()
 {
-#ifndef RASPBERRYPI_PICO
+#ifndef RP2040
     #ifdef USE_DISPLAY
     frameUpdateThread = std::thread(FrameThreadProcThunk, this);
     #else
@@ -58,7 +63,7 @@ void Display::StartDisplay()
 void Display::StopDisplay()
 {
     // See dtor. Same logic applies here
-#ifndef RASPBERRYPI_PICO
+#ifndef RP2040
     displaying = false;
     if (frameUpdateThread.joinable())
     {
@@ -75,7 +80,7 @@ void Display::FrameThreadProcThunk(void* context)
 
 void Display::ClockSignalForScanline()
 {
-#ifndef RASPBERRYPI_PICO
+#ifndef RP2040
     std::unique_lock lk(clockSignalMutex);
     drawNextScanline = true;
     clockSignalCv.notify_one();
@@ -90,18 +95,16 @@ void Display::ClockSignalForScanline()
 }
 
 void Display::FrameThreadProc()
-{
-#ifndef RASPBERRYPI_PICO
-    using namespace std::chrono_literals;
-    
-    auto frameBuffer = cv::Mat(cv::Size(GAMEBOY_HEIGHT, GAMEBOY_WIDTH), CV_8UC1, cv::Scalar(0));
-    
+{  
     displaying = true;
     while (displaying)
     {
+#ifndef RP2040
+        // In embedded we don't leave
         // use a keypress to break out of here
         char key = (char) cv::waitKey(30);   // explicit cast
         if (key == 27) break; 
+#endif
 
         UpdateLCDStatus();
 
@@ -112,8 +115,12 @@ void Display::FrameThreadProc()
         }
 
         // Wait until we can consider another scanline
+#ifdef RP2040
+        // some lock mechanism for raspi
+#else
         std::unique_lock lk(clockSignalMutex);
         clockSignalCv.wait(lk, [this]{return this->drawNextScanline;});
+#endif
 
         // Consider the next scanline
         uint8_t currentScanLine = mmu->ReadFromAddress(MMU::ScanLineCounterAddress);
@@ -123,7 +130,11 @@ void Display::FrameThreadProc()
         // confirm that currentScanline is valid
         if (currentScanLine < 0 || currentScanLine > 160)
         {
+#ifdef RP2040
+            // some lock mechanism for raspi
+#else
             lk.unlock();
+#endif
             continue;
         }
         
@@ -135,25 +146,24 @@ void Display::FrameThreadProc()
         else if (currentScanLine < VisibleScanlines)
         {
             // draw current scan line
-            DrawScanLine(frameBuffer, currentScanLine);
+            DrawScanLine(currentScanLine);
         }
         else
         {   // Are we in vblank? If so, set explicit VBLANK interrupt
             SetVBlankInterrupt();
             // during vblank, blit image to screen
-            #if defined(__linux__) || defined(_WIN32)
+#ifdef RP2040
+            lcd->WriteBuffer(canvas.getBuffer());
+#else
             cv::imshow("GameBoy", frameBuffer);
-            #endif
-            // sleep for a spell to maintain 60fps
-            //std::this_thread::sleep_for(2ms);
+#endif
         }
 
-        // update image
-        // simple: draw each scanline based on whether background or sprites or window are enabled
-        // complex: draw that which changes
-
         drawNextScanline = false;
+#ifdef RP2040
+#else
         lk.unlock();
+#endif
         
 
         // one scanline takes 456 clock cycles, and goes status 2 -> 3 -> 0
@@ -161,7 +171,6 @@ void Display::FrameThreadProc()
         // when mode changes to 0, 1, 2 then this is LCD interrupt
     }
 
-    #endif
 
     displaying = false;
 }
@@ -248,24 +257,24 @@ void Display::UpdateLCDStatus()
     mmu->WriteToAddress(MMU::LCDStatusAddress, currentStatus);
 }
 
-void Display::DrawScanLine(cv::Mat& buffer, uint8_t curScanline)
+void Display::DrawScanLine(uint8_t curScanline)
 {
     uint8_t lcdControl = mmu->ReadFromAddress(MMU::LCDControlAddress);
 
     // check if we can write tiles; if so, write
     if (lcdControl & BgEnabledBit)
     {
-        RenderTiles(buffer, lcdControl, curScanline);
+        RenderTiles(lcdControl, curScanline);
     }
 
     // check if we can write sprites; if so, write
     if (lcdControl & SpritesEnabledBit)
     {
-        RenderSprites(buffer, lcdControl, curScanline);
+        RenderSprites(lcdControl, curScanline);
     }
 }
 
-void Display::RenderTiles(cv::Mat& buffer, uint8_t controlReg, uint8_t curScanline)
+void Display::RenderTiles(uint8_t controlReg, uint8_t curScanline)
 {
     // Get X and Y locations for window and BG scroll
     uint8_t scrollX = mmu->ReadFromAddress(MMU::BGScrollXAddress);
@@ -408,14 +417,16 @@ void Display::RenderTiles(cv::Mat& buffer, uint8_t controlReg, uint8_t curScanli
 
         // set pixel colour
         // actual gameboy has RGB; for windows, just doing grayscale
-#ifdef RASPBERRYPI_PICO
+#ifdef RP2040
+        uint16_t newColour = GrayscaleToR5G6B5(grayscale);
+        canvas.drawPixel(i, curScanline, newColour);
 #else
-        buffer.at<uchar>(cv::Point(i, curScanline)) = grayscale;
+        frameBuffer.at<uchar>(cv::Point(i, curScanline)) = grayscale;
 #endif
     }
 }
 
-void Display::RenderSprites(cv::Mat& buffer, uint8_t controlReg, uint8_t curScanline)
+void Display::RenderSprites(uint8_t controlReg, uint8_t curScanline)
 {
     // Always draw all 40 sprites. If a sprite is unused, then I suppose it will be off camera
     // Is there a way we can know asap whether it's worth drawing the sprite?
@@ -469,6 +480,7 @@ void Display::RenderSprites(cv::Mat& buffer, uint8_t controlReg, uint8_t curScan
                 colourNumber |= (colourLine1 & colourMask? 0x1 : 0x0);
                 uint16_t paletteAddress = spriteAttributes & SpritePaletteNumberBit? MMU::SpriteColurPaletteAddress1 : MMU::SpriteColurPaletteAddress0;
                 uint8_t grayscale = GetColour(colourNumber, paletteAddress);
+                uint16_t r5g6b5 = GrayscaleToR5G6B5(grayscale);
 
                 // transparent, for sprites
                 if (grayscale == WHITE)
@@ -479,14 +491,26 @@ void Display::RenderSprites(cv::Mat& buffer, uint8_t controlReg, uint8_t curScan
                 // are we hiding sprite behind background?
                 if (spriteAttributes & SpriteBgPriorityBit)
                 {
-                    if (buffer.at<uchar>(xLoc, curScanline) == WHITE)
+#ifdef RP2040
+                    // white is 0
+                    if (canvas.getPixel(xLoc, curScanline) == 0x0000)
                     {
-                        buffer.at<uchar>(xLoc, curScanline) = grayscale;
+                        canvas.drawPixel(xLoc, curScanline, r5g6b5);
                     }
+#else
+                    if (frameBuffer.at<uchar>(xLoc, curScanline) == WHITE)
+                    {
+                        frameBuffer.at<uchar>(xLoc, curScanline) = grayscale;
+                    }
+#endif
                 }
                 else
                 {
-                    buffer.at<uchar>(xLoc, curScanline) = grayscale;
+#ifdef RP2040
+                    canvas.drawPixel(xLoc, curScanline, r5g6b5);
+#else
+                    frameBuffer.at<uchar>(xLoc, curScanline) = grayscale;
+#endif
                 }
             }
         }
@@ -558,4 +582,37 @@ uint8_t Display::GetColour(uint8_t colourNum, uint16_t paletteAddress)
     }
     
     return grayscale;
+}
+
+uint16_t Display::GrayscaleToR5G6B5(uint8_t colour)
+{
+    // We invert the colours here, so black is 0xFFFF
+    // and white is 0x0000. This is because it is a black-on-white
+    // LCD, not a white with black pixels like the gameboy
+    uint16_t newColour = 0x0000;
+    switch (colour)
+    {
+        case WHITE:
+        {
+            newColour = 0x0000;
+            break;
+        }
+        case LIGHT_GRAY:
+        {
+            newColour = 0x1833;
+            break;
+        }
+        case DARK_GRAY:
+        {
+            newColour = 0x38F7;
+            break;
+        }
+        case BLACK:
+        {
+            newColour = 0xFFFF;
+            break;
+        }
+    }
+
+    return newColour;
 }

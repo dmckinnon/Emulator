@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
-#ifdef RASPBERRYPI_PICO
+#ifdef RP2040
 
 #include <stdio.h>
 #include <string.h>
@@ -143,7 +143,9 @@ void ST7789::SetDisplayArea(int x, int y)
     currentWidth = x;
     currentHeight = y;
 
-    st7798_set_address_window(pio, sm, currentWidth, currentHeight);
+    int startX = (LCD_WIDTH - currentWidth)/2;
+    int startY = (LCD_HEIGHT - currentHeight)/2;
+    st7798_set_address_window(pio, sm, startX, startY, currentWidth, currentHeight);
 }
 
 void ST7789::ClearScreen()
@@ -153,7 +155,7 @@ void ST7789::ClearScreen()
         return;
     }
     
-    st7798_set_address_window(pio, sm, LCD_WIDTH, LCD_HEIGHT);
+    st7798_set_address_window(pio, sm, 0, 0, LCD_WIDTH, LCD_HEIGHT);
     st7789_start_pixels(pio, sm);
     for (int i = 0; i < LCD_HEIGHT; ++i)
     {
@@ -164,7 +166,9 @@ void ST7789::ClearScreen()
         }
     }
 
-    st7798_set_address_window(pio, sm, currentWidth, currentHeight);
+    int startX = (LCD_WIDTH - currentWidth)/2;
+    int startY = (LCD_HEIGHT - currentHeight)/2;
+    st7798_set_address_window(pio, sm, startX, startY, currentWidth, currentHeight);
 }
 
 void ST7789::WriteBuffer(uint16_t* buffer)
@@ -175,11 +179,11 @@ void ST7789::WriteBuffer(uint16_t* buffer)
     }
 
     st7789_start_pixels(pio, sm);
-    for (int i = 0; i < LCD_HEIGHT; ++i)
+    for (int i = 0; i < currentHeight; ++i)
     {
-        for (int j = 0; j < LCD_WIDTH; ++j)
+        for (int j = 0; j < currentWidth; ++j)
         {
-            int pixel = y*currentWidth + x;
+            int pixel = i*currentWidth + j;
             uint16_t colour = buffer[pixel];
             st7789_lcd_put(pio, sm, colour >> 8);
             st7789_lcd_put(pio, sm, colour & 0xFF);
@@ -187,194 +191,4 @@ void ST7789::WriteBuffer(uint16_t* buffer)
     }
 }
 
-int main() {
-    stdio_init_all();
-
-    PIO pio = pio0;
-    uint sm = 0;
-    uint offset = pio_add_program(pio, &st7789_lcd_program);
-    // how do I change this to use 32 bits? Or should I just use someone else's library?
-    st7789_lcd_program_init(pio, sm, offset, PIN_DIN, PIN_CLK, SERIAL_CLK_DIV);
-
-    gpio_init(PIN_CS);
-    gpio_init(PIN_DC);
-    gpio_init(PIN_RESET);
-    gpio_init(PIN_BL);
-    gpio_set_dir(PIN_CS, GPIO_OUT);
-    gpio_set_dir(PIN_DC, GPIO_OUT);
-    gpio_set_dir(PIN_RESET, GPIO_OUT);
-    gpio_set_dir(PIN_BL, GPIO_OUT);
-
-    gpio_put(PIN_CS, 1);
-    gpio_put(PIN_RESET, 1);
-    lcd_init(pio, sm, st7789_init_seq);
-    gpio_put(PIN_BL, 1);
-
-    // Other SDKs: static image on screen, lame, boring
-    // Raspberry Pi Pico SDK: spinning image on screen, bold, exciting
-
-    // Lane 0 will be u coords (bits 8:1 of addr offset), lane 1 will be v
-    // coords (bits 16:9 of addr offset), and we'll represent coords with
-    // 16.16 fixed point. ACCUM0,1 will contain current coord, BASE0/1 will
-    // contain increment vector, and BASE2 will contain image base pointer
-#define UNIT_LSB 16
-    /*interp_config lane0_cfg = interp_default_config();
-    interp_config_set_shift(&lane0_cfg, UNIT_LSB - 1); // -1 because 2 bytes per pixel
-    interp_config_set_mask(&lane0_cfg, 1, 1 + (LOG_IMAGE_SIZE - 1));
-    interp_config_set_add_raw(&lane0_cfg, true); // Add full accumulator to base with each POP
-    interp_config lane1_cfg = interp_default_config();
-    interp_config_set_shift(&lane1_cfg, UNIT_LSB - (1 + LOG_IMAGE_SIZE));
-    interp_config_set_mask(&lane1_cfg, 1 + LOG_IMAGE_SIZE, 1 + (2 * LOG_IMAGE_SIZE - 1));
-    interp_config_set_add_raw(&lane1_cfg, true);
-
-    interp_set_config(interp0, 0, &lane0_cfg);
-    interp_set_config(interp0, 1, &lane1_cfg);
-    interp0->base[2] = (uint32_t) raspberry_256x256;*/
-
-    // Write black to the whole screen first
-    st7789_start_pixels(pio, sm);
-    for (int y = 0; y < SCREEN_HEIGHT; ++y) {
-        for (int x = 0; x < SCREEN_WIDTH; ++x) {
-                uint16_t colour = 0;
-
-                // can I send more than a byte at a time?
-                st7789_lcd_put(pio, sm, colour >> 8);
-                st7789_lcd_put(pio, sm, colour & 0xff);
-        }
-    }
-
-
-    st7798_set_address_window(pio, sm, 40, 40, 160, 144);
-
-    GFXcanvas16 canvas(160, 144);
-
-
-
-    // now write a mega buffer?
-    // st7789_start_pixels(pio, sm);
-
-    // rotate the image and interpolate to a 160x144
-    //uint16_t buffer[160*144];
-
-    // set up buffer
-    /*for (int i = 0; i < 144; ++i)
-    {
-        memcpy(buffer + i*160, raspberry_256x256 + i*256*2, 160*2);
-    }
-
-    for (int i = 0; i < 144; ++i)
-    {
-        memcpy(buffer + i*160, shell_160x144 + i*160*2, 160*2);
-    }*/
-
-    while (1) {
-        canvas.fillScreen(0);
-        st7789_start_pixels(pio, sm);
-        uint16_t* buffer = canvas.getBuffer();
-        for (int y = 0; y < DISPLAY_HEIGHT; ++y) {
-
-            for (int x = 0; x < DISPLAY_WIDTH; ++x) {
-                
-                // just need to figure out how to do 32 bit
-                int pixel = y*160 + x;
-                uint16_t colour = buffer[pixel];
-
-                //st7789_lcd_put(pio, sm, colour >> 8);
-                st7789_lcd_put(pio, sm, colour >> 8);
-
-                //colour = buffer[y*160*3 + x + 1];
-                st7789_lcd_put(pio, sm, colour & 0xFF);
-
-                
-            }
-        }
-
-        sleep_ms(1000);
-
-        canvas.setCursor(0, 0);
-        // red text
-        canvas.setTextColor(0xf800);
-        canvas.write('A');
-        canvas.write('B');
-        canvas.write('C');
-        canvas.setCursor(0, 20);
-        canvas.write('D');
-        canvas.write('E');
-
-        for (int y = 0; y < DISPLAY_HEIGHT; ++y) {
-
-            for (int x = 0; x < DISPLAY_WIDTH; ++x) {
-                
-                // just need to figure out how to do 32 bit
-                int pixel = y*160 + x;
-                uint16_t colour = buffer[pixel];
-
-                //st7789_lcd_put(pio, sm, colour >> 8);
-                st7789_lcd_put(pio, sm, colour >> 8);
-
-                //colour = buffer[y*160*3 + x + 1];
-                st7789_lcd_put(pio, sm, colour & 0xFF);
-
-                
-            }
-        }
-
-        sleep_ms(3000);
-
-        // raspberry image
-        /*for (int i = 0; i < 144; ++i)
-        {
-            memcpy(buffer + i*160, raspberry_256x256 + i*256*2, 160*2);
-        }
-
-        st7789_start_pixels(pio, sm);
-        for (int y = 0; y < DISPLAY_HEIGHT; ++y) {
-
-            for (int x = 0; x < DISPLAY_WIDTH; ++x) {
-                
-                // just need to figure out how to do 32 bit
-                int pixel = y*160 + x;
-                uint16_t colour = buffer[pixel];
-
-                //st7789_lcd_put(pio, sm, colour >> 8);
-                st7789_lcd_put(pio, sm, colour >> 8);
-
-                //colour = buffer[y*160*3 + x + 1];
-                st7789_lcd_put(pio, sm, colour & 0xFF);
-
-                
-            }
-        }
-
-        // wait five seconds
-        sleep_ms(5000);
-
-        // change image to shell
-        for (int i = 0; i < 144; ++i)
-        {
-            memcpy(buffer + i*160, shell_160x144 + i*160*2, 160*2);
-        }
-        st7789_start_pixels(pio, sm);
-        for (int y = 0; y < DISPLAY_HEIGHT; ++y) {
-
-            for (int x = 0; x < DISPLAY_WIDTH; ++x) {
-                
-                // just need to figure out how to do 32 bit
-                int pixel = y*160 + x;
-                uint16_t colour = buffer[pixel];
-
-                //st7789_lcd_put(pio, sm, colour >> 8);
-                st7789_lcd_put(pio, sm, colour >> 8);
-
-                //colour = buffer[y*160*3 + x + 1];
-                st7789_lcd_put(pio, sm, colour & 0xFF);
-
-                
-            }
-        }
-
-        // wait five seconds
-        sleep_ms(5000);*/
-    }
-}
 #endif

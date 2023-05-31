@@ -1,9 +1,9 @@
 #include <iostream>
 #include <string.h>
-#ifdef RASPBERRYPI_PICO
+#ifdef RP2040
 #include <stdio.h>
 #include "pico/stdlib.h"
-
+#else
 #endif
 
 #include "Gameboy.h"
@@ -37,15 +37,19 @@ Parameters ParseArgs(int argc, char* argv[])
     return p;
 }
 
+#ifdef RP2040
+int main()
+{
+    stdio_init_all();
+#else
 int main(int argc, char* argv[])
 { 
-    stdio_init_all();
-
     auto parameters = ParseArgs(argc, argv);
+#endif
 
     // Start display
     std::shared_ptr<ST7789> lcd;
-#ifdef RASPBERRYPI_PICO
+#ifdef RP2040
     lcd = make_shared<ST7789>();
 #endif
 
@@ -54,7 +58,10 @@ int main(int argc, char* argv[])
     std::shared_ptr<Rom> gameRom = make_shared<Rom>();
 
     // get ROM from SD Card, ostensibly
+#ifdef RP2040
+    // load binary from a header?
 
+#else
     if (!LoadRomFromFile(parameters.romFilename, gameRom))
     {
         if (lcd)
@@ -70,6 +77,7 @@ int main(int argc, char* argv[])
     {
         cerr << "Could not load system ROM from " << "/home/dave/Emulator/systemRom.bin" << std::endl;
     }
+#endif
 
     // go into ROM and start running instructions
 

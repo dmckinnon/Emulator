@@ -1,20 +1,21 @@
 
 #include <functional>
 
-#ifndef RASPBERRYPI_PICO
+#ifndef RP2040
+
 #include <thread>
 #include <mutex>
 #include <condition_variable>
-
 #include <opencv2/opencv.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
 #else
-#include "pico/mutex.h"
 
+#include "pico/mutex.h"
 #include "st7789_driver.h"
 #endif
+
 #include "MMU.h"
 
 #define GAMEBOY_WIDTH 160
@@ -28,13 +29,10 @@
     thread writing to it at 60Hz and setting the VBLANK and LCDSTAT
     interrupts with the CPU.
 
-    Given that Gtk also registers keyboard events, on desktop this
-    class will also handle input events. 
-
     This class IS the display window, and contains any buttons/menus/
     other GUI elements necessary.
 */
-class Display //: public Gtk::Window
+class Display
 {
 public:
     // Args are lambdas for setting CPU interrupts
@@ -125,7 +123,7 @@ private:
     // main display thread
     void FrameThreadProc();
 
-#ifndef RASPBERRYPI_PICO
+#ifndef RP2040
     // display threada
     std::thread windowThread;
     std::thread frameUpdateThread;
@@ -134,7 +132,7 @@ private:
     std::mutex clockSignalMutex;
     std::condition_variable clockSignalCv;
 
-    GFXcanvas16 canvas;
+    cv::Mat frameBuffer;
 #else
     // Display thread
     // some thread object
@@ -142,6 +140,8 @@ private:
     // mutex and condition variable for clock signaling
     mutex_t clockSignalMutex;
     // condition variable?
+
+    GFXcanvas16 canvas;
 #endif
     bool drawNextScanline = false;
 
@@ -149,17 +149,9 @@ private:
 
 
     void UpdateLCDStatus();
-#ifndef RASPBERRYPI_PICO
-    void DrawScanLine(cv::Mat& buffer, uint8_t curScanline);
-    void RenderTiles(cv::Mat& buffer, uint8_t controlReg, uint8_t curScanline);
-    void RenderSprites(cv::Mat& buffer, uint8_t controlReg, uint8_t curScanline);
-/*#else
-    void UpdateLCDStatus();
-    
-    */
-#endif
-void DrawScanLine(uint8_t** buffer, uint8_t curScanline);
-    void RenderTiles(uint8_t** buffer, uint8_t controlReg, uint8_t curScanline);
-    void RenderSprites(uint8_t** buffer, uint8_t controlReg, uint8_t curScanline);
+    void DrawScanLine(uint8_t curScanline);
+    void RenderTiles(uint8_t controlReg, uint8_t curScanline);
+    void RenderSprites(uint8_t controlReg, uint8_t curScanline);
     uint8_t GetColour(uint8_t colourNum, uint16_t paletteAddress);
+    uint16_t GrayscaleToR5G6B5(uint8_t colour);
 };
