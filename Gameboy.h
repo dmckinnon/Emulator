@@ -23,6 +23,10 @@ public:
 
     bool Run();
 
+    // so we can start this from a static argless function
+    // fore core 1 of RP2040
+    void StartCPU();
+
 private:
     std::shared_ptr<MMU> mmu;
     CPU cpu;

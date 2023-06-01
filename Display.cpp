@@ -55,8 +55,9 @@ void Display::StartDisplay()
     displaying = true;
     #endif
 #else
-    // on embedded, either main thread is CPU or main thread is display
-    // haven't decided which yet
+    // on embedded, main thread becomes display thread
+    // Start running display, and ... realistically, we don't stop
+    FrameThreadProc();
 #endif
 }
 
@@ -88,7 +89,8 @@ void Display::ClockSignalForScanline()
     mutex_enter_blocking(&clockSignalMutex);
 
     drawNextScanline = true;
-    // TODO notify the main display thread
+    // main thread is spinning on checking this so there
+    // is no need to notify
 
     mutex_exit(&clockSignalMutex);
 #endif
@@ -116,7 +118,18 @@ void Display::FrameThreadProc()
 
         // Wait until we can consider another scanline
 #ifdef RP2040
-        // some lock mechanism for raspi
+        // lock mechanism for rp2040
+        bool canProceed = false;
+        while (!canProceed)
+        {
+            // This is how we wait on a condition var in rp2040
+            // could also use a thread queue
+            mutex_enter_blocking(&clockSignalMutex);
+            canProceed = drawNextScanline;
+            mutex_exit(&clockSignalMutex);
+        }
+        // Take the lock again
+        mutex_enter_blocking(&clockSignalMutex);
 #else
         std::unique_lock lk(clockSignalMutex);
         clockSignalCv.wait(lk, [this]{return this->drawNextScanline;});
@@ -131,7 +144,8 @@ void Display::FrameThreadProc()
         if (currentScanLine < 0 || currentScanLine > 160)
         {
 #ifdef RP2040
-            // some lock mechanism for raspi
+            // unlock so that CPU thread can tke mutex
+            mutex_exit(&clockSignalMutex);
 #else
             lk.unlock();
 #endif
@@ -161,11 +175,11 @@ void Display::FrameThreadProc()
 
         drawNextScanline = false;
 #ifdef RP2040
+        mutex_exit(&clockSignalMutex);
 #else
         lk.unlock();
 #endif
         
-
         // one scanline takes 456 clock cycles, and goes status 2 -> 3 -> 0
         // vblank is mode 1
         // when mode changes to 0, 1, 2 then this is LCD interrupt

@@ -16,7 +16,7 @@ MMU::MMU(Rom& systemRom)
 
     // Start with system ROM mapped and load default system ROM to it
     this->useSystemRom = true;
-    memcpy(&this->systemRom, systemRom.uint8_ts, systemRom.size);
+    memcpy(&this->systemRom, systemRom.bytes, systemRom.size);
 
     // set up registers. See 
     // http://www.codeslinger.co.uk/pages/projects/gameboy/hardware.html
@@ -104,14 +104,14 @@ void MMU::LoadRomToMemory(std::shared_ptr<Rom> rom)
     // in at 0x100, we need to copy the ISRs that sit in 0x00 - 0xFF
     if (rom->size < cartridgeRomBank0Size)
     {
-        memcpy(&memory[0], rom->uint8_ts, rom->size);
+        memcpy(&memory[0], rom->bytes, rom->size);
     }
     else
     {
-        memcpy(&memory[0], rom->uint8_ts, cartridgeRomBank0Size);
+        memcpy(&memory[0], rom->bytes, cartridgeRomBank0Size);
         // Write at most one bank, but less if ROM is smaller
         uint16_t writeSize = std::min((unsigned int)cartridgeRomBankSwitchableSize, rom->size - cartridgeRomBank0Size);
-        memcpy(&memory[cartridgeRomBankSwitchableOffset], &rom->uint8_ts[cartridgeRomBank0Size], writeSize);
+        memcpy(&memory[cartridgeRomBankSwitchableOffset], &rom->bytes[cartridgeRomBank0Size], writeSize);
     }
 
     // Determine which MBC the game uses
@@ -289,7 +289,7 @@ void MMU::SwapOutRomBank(int bank)
     // Swap out the switchable bank with the bank specified
     currentRomBank = bank;
     memcpy(&memory[cartridgeRomBankSwitchableOffset],
-           &currentRom->uint8_ts[cartridgeRomBank0Size + (bank * cartridgeRomBankSwitchableSize)],
+           &currentRom->bytes[cartridgeRomBank0Size + (bank * cartridgeRomBankSwitchableSize)],
            cartridgeRomBankSwitchableSize);
 }
 

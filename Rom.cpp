@@ -1,6 +1,8 @@
 #include "Rom.h"
 
 #include <fstream>
+#include <string>
+#include <cstring>
 
 bool LoadRomFromFile(std::string filename, std::shared_ptr<Rom> rom)
 {
@@ -18,12 +20,25 @@ bool LoadRomFromFile(std::string filename, std::shared_ptr<Rom> rom)
         romFile.seekg(0, std::ios::beg);
 
         rom->size = length;
-        romFile.read((char*)rom->uint8_ts, rom->size);
+        romFile.read((char*)rom->bytes, rom->size);
     }
     else
     {
         return false;
     }
+
+    return true;
+}
+
+bool LoadRomFromBinary(uint8_t* buffer, unsigned int size, std::shared_ptr<Rom> rom)
+{
+    // check this ROM is small enough
+    if (size > MAX_ROM_SIZE_BYTES)
+    {
+        return false;
+    }
+
+    memcpy(rom->bytes, buffer, size);
 
     return true;
 }

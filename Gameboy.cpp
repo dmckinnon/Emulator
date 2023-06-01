@@ -5,9 +5,10 @@
 #ifndef RP2040
 #include <thread>
 #else
-
+#include "pico/multicore.h"
 #endif
 
+Gameboy* g = nullptr;
 
 Gameboy::Gameboy(
     std::shared_ptr<Rom> systemRom,
@@ -35,6 +36,11 @@ Gameboy::Gameboy(
     cpu.SetDisplaySignalFunc([this](){
         this->display.ClockSignalForScanline();
     });
+
+#ifdef RP2040
+    // So we can use a static arg-less function for core 1
+    g = this;
+#endif
 }
 
 Gameboy::~Gameboy()
@@ -58,24 +64,37 @@ bool Gameboy::LoadRom(std::shared_ptr<Rom> rom)
     return true;
 }
 
+void Gameboy::StartCPU()
+{
+    cpu.ExecuteCode();
+}
+
+static void StartCPUExecuting()
+{
+    g->StartCPU();
+}
+
 bool Gameboy::Run()
 {
     using namespace std::chrono_literals;
     // Create the display thread and CPU thread
 
     // cpu thread
-#if defined(__linux) || defined(_WIN32)
+#ifndef RP2040
     auto cpuThread = std::thread([this](){
         this->cpu.ExecuteCode();
     });
 #else
+    multicore_reset_core1();
+    // Start the CPU thread on core 1
+    multicore_launch_core1(StartCPUExecuting);
 #endif
 
-    // On embedded, this becomes the display thread
+    // On embedded, this becomes the display thread (core 0)
     // as it never needs to exit
     display.StartDisplay();
 
-#if defined(__linux) || defined(_WIN32)
+#ifndef RP2040
     // wait for both threads to finish
     while (/*display.Displaying() &&*/ cpu.Executing())
     {
@@ -90,8 +109,6 @@ bool Gameboy::Run()
 
     display.StopDisplay();
 #endif
-
-    // display 
 
     return true;
 }

@@ -3,6 +3,9 @@
 #ifdef RP2040
 #include <stdio.h>
 #include "pico/stdlib.h"
+
+#include "SystemRom.h"
+#include "Adafruit_GFX.h"
 #else
 #endif
 
@@ -51,6 +54,9 @@ int main(int argc, char* argv[])
     std::shared_ptr<ST7789> lcd;
 #ifdef RP2040
     lcd = make_shared<ST7789>();
+    lcd->InitLCD();
+
+    GFXcanvas16 canvas(LCD_WIDTH, LCD_HEIGHT);
 #endif
 
     // load rom from file to uint8_t buffer
@@ -59,7 +65,19 @@ int main(int argc, char* argv[])
 
     // get ROM from SD Card, ostensibly
 #ifdef RP2040
-    // load binary from a header?
+    // load binary from a header
+    if (!LoadRomFromBinary(systemRomBinary, systemRomSize, systemRom))
+    {
+        // print something to the display
+        // We kinda need the graphics for this ... 
+        // TODO add GFX
+        canvas.write('n');
+        canvas.write('o');
+        
+        lcd->WriteBuffer(canvas.getBuffer());
+    }
+
+    // Load game rom
 
 #else
     if (!LoadRomFromFile(parameters.romFilename, gameRom))
