@@ -29,7 +29,7 @@ public:
 
     void InitLCD();
     void SetDisplayArea(int x, int y);
-    void ClearScreen();
+    void ClearScreen(bool black);
 
     // This uses the current width and height and assumes
     // that that is the size of the buffer

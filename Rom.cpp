@@ -39,6 +39,7 @@ bool LoadRomFromBinary(uint8_t* buffer, unsigned int size, std::shared_ptr<Rom> 
     }
 
     memcpy(rom->bytes, buffer, size);
+    rom->size = size;
 
     return true;
 }

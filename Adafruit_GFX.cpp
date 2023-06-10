@@ -851,6 +851,14 @@ void Adafruit_GFX::write(uint8_t c) {
   }
 }
 
+void Adafruit_GFX::writeString(std::string str)
+{
+  for (int i = 0; i < str.length(); ++i)
+  {
+    write(str.c_str()[i]);
+  }
+}
+
 /**************************************************************************/
 /*!
     @brief   Set text 'magnification' size. Each increase in s makes 1 pixel

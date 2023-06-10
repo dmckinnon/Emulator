@@ -148,12 +148,14 @@ void ST7789::SetDisplayArea(int x, int y)
     st7798_set_address_window(pio, sm, startX, startY, currentWidth, currentHeight);
 }
 
-void ST7789::ClearScreen()
+void ST7789::ClearScreen(bool black)
 {
     if (!initialised)
     {
         return;
     }
+
+    uint8_t colour = black? 0 : 0xFF;
     
     st7798_set_address_window(pio, sm, 0, 0, LCD_WIDTH, LCD_HEIGHT);
     st7789_start_pixels(pio, sm);
@@ -161,8 +163,8 @@ void ST7789::ClearScreen()
     {
         for (int j = 0; j < LCD_WIDTH; ++j)
         {
-            st7789_lcd_put(pio, sm, 0);
-            st7789_lcd_put(pio, sm, 0);
+            st7789_lcd_put(pio, sm, colour);
+            st7789_lcd_put(pio, sm, colour);
         }
     }
 

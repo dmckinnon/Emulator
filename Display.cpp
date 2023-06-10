@@ -26,6 +26,8 @@ Display::Display(
 
 #ifdef RP2040
     mutex_init(&clockSignalMutex);
+    lcd->SetDisplayArea(GAMEBOY_WIDTH, GAMEBOY_HEIGHT);
+    lcd->ClearScreen(true);
 #else
     frameBuffer = cv::Mat(cv::Size(GAMEBOY_HEIGHT, GAMEBOY_WIDTH), CV_8UC1, cv::Scalar(0));
 #endif
@@ -606,22 +608,22 @@ uint16_t Display::GrayscaleToR5G6B5(uint8_t colour)
     uint16_t newColour = 0x0000;
     switch (colour)
     {
-        case WHITE:
+        case BLACK://WHITE:
         {
             newColour = 0x0000;
             break;
         }
-        case LIGHT_GRAY:
+        case DARK_GRAY://LIGHT_GRAY:
         {
             newColour = 0x1833;
             break;
         }
-        case DARK_GRAY:
+        case LIGHT_GRAY://DARK_GRAY:
         {
             newColour = 0x38F7;
             break;
         }
-        case BLACK:
+        case WHITE://BLACK:
         {
             newColour = 0xFFFF;
             break;

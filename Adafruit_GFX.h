@@ -4,6 +4,7 @@
 
 #include "pico/stdlib.h"
 #include "gfxfont.h"
+#include <string>
 
 
 
@@ -172,6 +173,7 @@ public:
   void cp437(bool x = true) { _cp437 = x; }
 
   virtual void write(uint8_t);
+  void writeString(std::string str);
 
   /************************************************************************/
   /*!
