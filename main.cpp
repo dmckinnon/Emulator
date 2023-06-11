@@ -6,6 +6,11 @@
 
 #include "SystemRom.h"
 #include "Adafruit_GFX.h"
+
+// games, until we can get SD card working
+//#include "Tetris.h"
+#include "SuperMario.h"
+//#include "LegendOfZeldaLinksAwakening.h"
 #else
 #endif
 
@@ -68,7 +73,8 @@ int main(int argc, char* argv[])
 #endif
 
     // load rom from file to uint8_t buffer
-    std::shared_ptr<Rom> systemRom = make_shared<Rom>(systemRomSize); 
+    std::shared_ptr<Rom> systemRom = make_shared<Rom>(systemRomSize);
+    std::shared_ptr<Rom> gameRom;
     
 
     // get ROM from SD Card, ostensibly
@@ -89,21 +95,29 @@ int main(int argc, char* argv[])
     }
 
     canvas.setCursor(0, 20);
-    canvas.writeString("Loading game ROM ...");
+    canvas.writeString("Loading game ROM: ");
+    canvas.writeString(SuperMarioName);
     lcd->WriteBuffer(canvas.getBuffer());
     canvas.setCursor(0, 30);
     // get size of game ROM and game name
 
     // get game size
-    std::shared_ptr<Rom> gameRom = make_shared<Rom>(systemRomSize);
-
-    //if (gameRom == nullptr)
+    //gameRom = *SuperMarioRom;// make_shared<Rom>(SuperMarioRom);
+    /*if (!LoadRomFromBinary(SuperMarioRom, SuperMarioRomSize, gameRom))
     {
         canvas.writeString("No game ROM loaded. Running only system ROM");
         lcd->WriteBuffer(canvas.getBuffer());
     }
+    else*/
+    gameRom = std::make_shared<Rom>();
+    gameRom->size = SuperMarioRomSize;
+    gameRom->bytes = (uint8_t*)SuperMarioRomBinary;
+    {
+        canvas.writeString("Loaded game. Running ... ");
+        lcd->WriteBuffer(canvas.getBuffer());
+    }
 
-    sleep_ms(2000);
+    sleep_ms(5000);
 
 #else
     if (!LoadRomFromFile(parameters.romFilename, gameRom))
@@ -135,6 +149,13 @@ int main(int argc, char* argv[])
 
         Gameboy g = Gameboy(systemRom, lcd);
         g.LoadRom(gameRom);
+
+#ifdef RP2040
+        // We've copied game rom and system rom. Delete the objects now to save memory
+        systemRom.reset();
+        gameRom.reset();
+#endif
+
         g.Run();
     }
 
