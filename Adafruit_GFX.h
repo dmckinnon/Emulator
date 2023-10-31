@@ -1,4 +1,5 @@
 #pragma once
+#ifdef RP2040
 #ifndef _ADAFRUIT_GFX_H
 #define _ADAFRUIT_GFX_H
 
@@ -262,5 +263,5 @@ protected:
   void drawFastRawHLine(int16_t x, int16_t y, int16_t w, uint16_t color);
   uint16_t *buffer; ///< Raster data: no longer private, allow subclass access
 };
-
+#endif
 #endif // _ADAFRUIT_GFX_H

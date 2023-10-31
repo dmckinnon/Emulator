@@ -4,6 +4,8 @@
 
 #ifndef RP2040
 #include <thread>
+
+class ST7789;
 #else
 #include "pico/multicore.h"
 #endif

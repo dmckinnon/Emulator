@@ -33,7 +33,7 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
  */
-
+#ifdef RP2040
 #include "Adafruit_GFX.h"
 #include "glcdfont.c"
 #include <stdint.h>
@@ -1300,3 +1300,4 @@ void GFXcanvas16::drawFastRawHLine(int16_t x, int16_t y, int16_t w,
     buffer[i] = color;
   }
 }
+#endif

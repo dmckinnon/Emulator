@@ -1,7 +1,7 @@
 #pragma once
 #include "Rom.h"
 
-#if defined(__linux) || defined(_WIN32)
+#ifndef RP2040
 #include <mutex>
 #else
 #include "pico/mutex.h"

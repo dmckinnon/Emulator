@@ -16,13 +16,13 @@ Display::Display(
     lcd(lcd),
     SetVBlankInterrupt(setVBlankInterrupt),
     SetLCDStatInterrupt(setLCDStatInterrupt),
-    SetJoypadInterrupt(setJoypadInterrupt),
+    SetJoypadInterrupt(setJoypadInterrupt)
 #ifdef RP2040
-    canvas(GAMEBOY_WIDTH, GAMEBOY_HEIGHT),
+    ,canvas(GAMEBOY_WIDTH, GAMEBOY_HEIGHT)
 #endif
-    scanlineCycleCounter(0)
 {
     displaying = false;
+    scanlineCycleCounter = 0;
 
 #ifdef RP2040
     mutex_init(&clockSignalMutex);
@@ -30,6 +30,7 @@ Display::Display(
     lcd->ClearScreen(true);
 #else
     frameBuffer = cv::Mat(cv::Size(GAMEBOY_HEIGHT, GAMEBOY_WIDTH), CV_8UC1, cv::Scalar(0));
+    debugger = std::make_shared<Debugger>(mmu);
 #endif
 }
 
@@ -135,6 +136,12 @@ void Display::FrameThreadProc()
 #else
         std::unique_lock lk(clockSignalMutex);
         clockSignalCv.wait(lk, [this]{return this->drawNextScanline;});
+
+        // if we have the debugger attached, block on it waiting
+        if (debugger)
+        {
+            debugger->MaybeBlock();
+        }
 #endif
 
         // Consider the next scanline
@@ -317,14 +324,14 @@ void Display::RenderTiles(uint8_t controlReg, uint8_t curScanline)
     // TODO remove magic numbers
     uint16_t windowTileDataAddress;
     bool unsig = true;
-    if (controlReg & BgWindowTilesetBit)
+    if (controlReg & BgWindowTileSetBit)
     {
-        windowTileDataAddress = 0x8000;
+        windowTileDataAddress = UnsignedBgTileDataAddress;
     }
     else
     {
         // this region uses signed bytes for tile ids
-        windowTileDataAddress = 0x8800;
+        windowTileDataAddress = SignedBgTileDataAddress;
         unsig = false;
     }
 
@@ -335,15 +342,16 @@ void Display::RenderTiles(uint8_t controlReg, uint8_t curScanline)
         // check BG memory map
         if (controlReg & BgTileMapBit)
         {
-            backgroundMemory = 0x9C00;
+            backgroundMemory = UnsignedBgTileLayoutAddress;
         }
         else
         {
-            backgroundMemory = 0x9800;
+            backgroundMemory = SignedBgTileLayoutAddress;
         }
     }
     else
     {
+        // TODO are these correct?
         // check window memory map
         if (controlReg & WindowTileMapBit)
         {

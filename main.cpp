@@ -1,10 +1,11 @@
 #include <iostream>
 #include <string.h>
+#include "SystemRom.h"
 #ifdef RP2040
 #include <stdio.h>
 #include "pico/stdlib.h"
 
-#include "SystemRom.h"
+
 #include "Adafruit_GFX.h"
 
 // games, until we can get SD card working
@@ -12,6 +13,7 @@
 #include "SuperMario.h"
 //#include "LegendOfZeldaLinksAwakening.h"
 #else
+class ST7789;
 #endif
 
 #include "Gameboy.h"
@@ -144,8 +146,10 @@ int main(int argc, char* argv[])
     //std::cout << "Size of game ROM: " << gameRom->size << std::endl;
 
     {
+#ifdef RP2040
         // destroy the original canvas and free up the memory
         canvas.~GFXcanvas16();
+#endif
 
         Gameboy g = Gameboy(systemRom, lcd);
         g.LoadRom(gameRom);
