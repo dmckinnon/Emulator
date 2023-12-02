@@ -44,12 +44,9 @@ private:
     // largely copies of what is in Display
     void RenderTiles(
         uint8_t controlReg,
-        uint16_t curScanline,
+        uint16_t tileNumner,
         uint16_t xOffset,
-        uint8_t scrollX,
-        uint8_t scrollY, 
-        uint8_t windowX, 
-        uint8_t windowY);
+        uint16_t yOffset);
     uint8_t GetColour(uint8_t colourNum, uint16_t paletteAddress);
 
 

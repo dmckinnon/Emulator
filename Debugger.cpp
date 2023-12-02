@@ -22,6 +22,7 @@ Debugger::Debugger(std::shared_ptr<MMU> mmu)
     // Do we also want cpu? Probably later
 
     // Initialise window
+    // Rewrite this as a mat and do imshow on the mat, instead of drawing a window
     cv::namedWindow("Debugger");
     cv::resizeWindow("Debugger", DEBUG_WINDOW_SIZE, DEBUG_WINDOW_SIZE);
 
@@ -55,9 +56,13 @@ void Debugger::ShowTiles(uint16_t address)
 
     // From starting address, render each pixel of each tile?
 
+    // give it the start location in this window, and the address
+    // and it will draw the whole sprite
 
+    // can honestly fake control reg. Maybe should. Force foreground drawing
 
-
+    RenderTiles(mmu->ReadFromAddress(MMU::LCDControlAddress), 0, 4, 4);
+    RenderTiles(mmu->ReadFromAddress(MMU::LCDControlAddress), 1, 84, 84);
 }
 
 void Debugger::DebuggerThread()
@@ -97,12 +102,9 @@ void Debugger::MaybeBlock()
 
 void Debugger::RenderTiles(
     uint8_t controlReg,
-    uint16_t curScanline,
+    uint16_t tileNumber,
     uint16_t xOffset,
-    uint8_t scrollX,
-    uint8_t scrollY, 
-    uint8_t windowX, 
-    uint8_t windowY)
+    uint16_t yOffset)
 {
     // the minus 7 is just something in the gameboy
     //uint8_t windowX = mmu->ReadFromAddress(MMU::WindowXAddress) - 7;
@@ -122,7 +124,6 @@ void Debugger::RenderTiles(
     // Which region of memory are we grabbing window from 
     // 0x8000 or 0x8800 holds the tile data 
     // 0x9800 and 0x9C00 hold the tile layout
-    // TODO remove magic numbers
     uint16_t windowTileDataAddress;
     bool unsig = true;
     if (controlReg & BgWindowTileSetBit)
@@ -171,7 +172,7 @@ void Debugger::RenderTiles(
     // which of the 32 vertical tiles is the current scanline in?
     // not sure I understand this logic for window
     uint8_t yPos = 0;
-    if (!drawWindow)
+    /*if (!drawWindow)
     {
         // Not drawing window. Check from the top of the background
         // plus the current scanline
@@ -185,45 +186,37 @@ void Debugger::RenderTiles(
         // from y position 1?? Well, this would be tile 1? 
         // This doesn't make sense to me 
         yPos = curScanline - windowY;
+    }*/
+
+    // need scrollY + curScanline to index through each sprite
+    // tileNumber runs from 0-32, since that is the number of tiles we can have
+    int16_t tileNum = 0;
+
+    // get tile id
+    // I think this is the way to iterate through all tiles?
+    // That is, this is where the tiles lie and we just jump through cos each tile is 32 bytes?
+    // I'll need to read up again
+    uint16_t tileAddress = backgroundMemory + tileNumber * 32;
+    if (unsig)
+    {
+        tileNum = mmu->ReadFromAddress(tileAddress);
     }
+    else
+    {   
+        tileNum = (int16_t)mmu->ReadFromAddress(tileAddress);
+    }
+
+    // Now get the tile from memory using id, and knowing whether we are
+    // in the signed map or the unsigned map
+    uint16_t tileLocation = windowTileDataAddress + (unsig? tileNum*16 : (tileNum+128)*16);
 
     for (int yPos = 0; yPos < SPRITE_HEIGHT; yPos ++)
     {
         // Which vertical pixel row of the tile is the currentScanline in?
-        uint16_t tileRow = (yPos/8)*32;
-
         // Draw this row of the sprite
         for (uint8_t i = 0; i < SPRITE_WIDTH; ++i)
         {
-            // get the value for background offset
-            uint8_t bgX = i + scrollX;
-
-            if (drawWindow)
-            {
-                if (i >= windowX)
-                {
-                    bgX = i - windowX;
-                }
-            }
-
-            // find which tile of the 32 across this position falls in
-            uint16_t tileCol = bgX/8;
-            int16_t tileNum = 0;
-
-            // get tile id
-            uint16_t tileAddress = backgroundMemory + tileRow + tileCol;
-            if (unsig)
-            {
-                tileNum = mmu->ReadFromAddress(tileAddress);
-            }
-            else
-            {   
-                tileNum = (int16_t)mmu->ReadFromAddress(tileAddress);
-            }
-
-            // Now get the tile from memory using id, and knowing whether we are
-            // in the signed map or the unsigned map
-            uint16_t tileLocation = windowTileDataAddress + (unsig? tileNum*16 : (tileNum+128)*16);
+            
 
             // Now get the correct vertical line in the tile so we know what to draw.
             // Each line takes up two bytes of memory, to represent the colours
@@ -234,7 +227,9 @@ void Debugger::RenderTiles(
             // Now separate out the individual colour for this pixel
             // we need the xPos as a relative coordinate from 0-7 inside the tile
             // and this gives us the bit number we need from the two bytes for colour
-            uint8_t bitNumber = 7 - (bgX % 8);
+
+            // how can we fake this number? Isn't this x position?
+            uint8_t bitNumber = 7 - (i % 8);//(bgX % 8);
             uint8_t bitPosition = 0x01 << bitNumber;
             uint8_t colourNumber = byte2 & bitPosition? 0x2 : 0x0;
             colourNumber |= (byte1 & bitPosition? 0x1 : 0x0);
@@ -244,7 +239,7 @@ void Debugger::RenderTiles(
 
             // set pixel colour
             // actual gameboy has RGB; for windows, just doing grayscale
-            tiles.at<uchar>(cv::Point(i + xOffset, curScanline + yPos)) = grayscale;
+            tiles.at<uchar>(cv::Point(i + xOffset, yPos + yOffset)) = grayscale;
         }
     }
 }

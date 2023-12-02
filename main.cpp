@@ -23,8 +23,8 @@ using namespace std;
 struct Parameters
 {
     // default to make things easier for me
-    string romFilename = "/home/dave/Emulator/tests/05-op rp.gb";
-
+    string romFilename = "/home/dmckinnon/Emulator/SuperMario.gb";
+    string systemRomFilename = "/home/dmckinnon/Emulator/systemRom_noloops.bin";
 };  
 
 Parameters ParseArgs(int argc, char* argv[])
@@ -36,8 +36,12 @@ Parameters ParseArgs(int argc, char* argv[])
         {
             p.romFilename = argv[++i];
         }
+        else if (strcmp(argv[i], "-s") == 0)
+        {
+            p.systemRomFilename = argv[++i];
+        }
         
-        // more args
+        // more args 
         /*else if ()
         {
 
@@ -77,6 +81,7 @@ int main(int argc, char* argv[])
     // load rom from file to uint8_t buffer
     std::shared_ptr<Rom> systemRom = make_shared<Rom>(systemRomSize);
     std::shared_ptr<Rom> gameRom;
+    gameRom = std::make_shared<Rom>();
     
 
     // get ROM from SD Card, ostensibly
@@ -111,7 +116,7 @@ int main(int argc, char* argv[])
         lcd->WriteBuffer(canvas.getBuffer());
     }
     else*/
-    gameRom = std::make_shared<Rom>();
+    
     gameRom->size = SuperMarioRomSize;
     gameRom->bytes = (uint8_t*)SuperMarioRomBinary;
     {
@@ -133,9 +138,9 @@ int main(int argc, char* argv[])
             cerr << "Could not load game ROM from " << parameters.romFilename << std::endl;
         }
     }
-    if (!LoadRomFromFile("/home/dave/Emulator/systemRom_noloops.bin", systemRom))
+    if (!LoadRomFromFile(parameters.systemRomFilename, systemRom))
     {
-        cerr << "Could not load system ROM from " << "/home/dave/Emulator/systemRom.bin" << std::endl;
+        cerr << "Could not load system ROM from " << parameters.systemRomFilename << std::endl;
     }
 #endif
 
