@@ -28,6 +28,16 @@ struct Rom
     {
         free(bytes);
     }
+
+    void SetSize(uint32_t size)
+    {
+        if (bytes != nullptr)
+        {
+            free(bytes);
+        }
+
+        bytes = (uint8_t *)malloc(size);
+    }
 };
 
 bool LoadRomFromFile(std::string filename, std::shared_ptr<Rom> rom);

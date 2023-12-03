@@ -13,6 +13,7 @@ Debugger::Debugger(std::shared_ptr<MMU> mmu)
 {
     this->mmu = mmu;
     blockEveryFrame = false;
+    moveToNextFrame = false;
 
     cv::Mat img(DEBUG_WINDOW_SIZE, DEBUG_WINDOW_SIZE, CV_8UC3);
     tiles = img;
@@ -21,18 +22,18 @@ Debugger::Debugger(std::shared_ptr<MMU> mmu)
 
     // Do we also want cpu? Probably later
 
-    // Initialise window
-    // Rewrite this as a mat and do imshow on the mat, instead of drawing a window
-    cv::namedWindow("Debugger");
-    cv::resizeWindow("Debugger", DEBUG_WINDOW_SIZE, DEBUG_WINDOW_SIZE);
-
     // Need a way of specifying address
     // use cin prompted by a mouse click or something
+
+    debuggerThread = std::thread([this](){
+        this->DebuggerThread();
+    });
 }
 
 Debugger::~Debugger()
 {
-
+    runDebugger = false;
+    debuggerThread.join();
 }
 
 void Debugger::ShowTiles(uint16_t address)
@@ -63,12 +64,16 @@ void Debugger::ShowTiles(uint16_t address)
 
     RenderTiles(mmu->ReadFromAddress(MMU::LCDControlAddress), 0, 4, 4);
     RenderTiles(mmu->ReadFromAddress(MMU::LCDControlAddress), 1, 84, 84);
+    
+
+    
 }
 
 void Debugger::DebuggerThread()
 {
-    while (true)
+    while (runDebugger)
     {
+        cv::imshow("Debugger", tiles);
         char key = (char) cv::waitKey(30);   // explicit cast
         if (key == 'a')
         {
@@ -79,13 +84,26 @@ void Debugger::DebuggerThread()
             // get address as uint16_t
             uint16_t addr = 0;
 
+            // TODO convert address
+            // probably meed to remove othe rprintfs
+
             ShowTiles(addr);
         } 
-        else if (key == 'c')
+        else if (key == 'n')
         {
             // release lock on frame
             moveToNextFrame = true;
         }
+        else if (key == 'c')
+        {
+            blockEveryFrame =false;
+        }
+        else if (key == 'b')
+        {
+            blockEveryFrame = true;
+            moveToNextFrame = false;
+        }
+        
     }
 }
 
@@ -95,7 +113,7 @@ void Debugger::MaybeBlock()
     {
         std::unique_lock lk(frameMutex);
         debuggerBlockCV.wait(lk, [this]{return this->moveToNextFrame;});
-        moveToNextFrame = true;
+        moveToNextFrame = false;
     }
 }
 

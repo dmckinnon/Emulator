@@ -56,7 +56,7 @@ Gameboy::~Gameboy()
 
 bool Gameboy::LoadRom(std::shared_ptr<Rom> rom)
 {
-    if (rom == nullptr)
+    if (rom == nullptr || rom->bytes == nullptr)
     {
         return false;
     }

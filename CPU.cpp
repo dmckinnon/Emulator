@@ -5,9 +5,9 @@
 #include <string.h>
 #include <thread>
 
-//#define DEBUG_OUT
+#define DEBUG_OUT
 
-#define QUIT_AFTER_BOOT
+//#define QUIT_AFTER_BOOT
 
 #define CLOCKSPEED 4194304 
 
@@ -199,7 +199,7 @@ void CPU::CheckAndMaybeHandleInterrupts()
 
 void CPU::ExecuteCode()
 {
-    using namespace std::chrono_literals;
+    //using namespace std::chrono_literals;
     executing = true;
 
     // setup to avoid systemrom
@@ -2685,11 +2685,11 @@ int CPU::ExecuteNextInstruction()
         registers.shorts[PC] ++;
     }
 
-    if (registers.shorts[PC] >= 0x100)
+    /*if (registers.shorts[PC] >= 0x100)
     {
         registers.shorts[PC] = oldPC;
         while(true);
-    }
+    }*/
 
     // Stop executing if program counter goes past ROM
     if (registers.shorts[PC] >= MMU::cartridgeRomBankSwitchableOffset + MMU::cartridgeRomBankSwitchableSize)

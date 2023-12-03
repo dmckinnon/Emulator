@@ -31,6 +31,7 @@ private:
     std::thread debuggerThread;
     bool blockEveryFrame;
     bool moveToNextFrame = false;
+    bool runDebugger = true;
 
     uint16_t tileAddress;
 
