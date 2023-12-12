@@ -2677,6 +2677,13 @@ int CPU::ExecuteNextInstruction()
             registers.shorts[SP], registers.shorts[PC]);
 #endif
 
+    uint8_t programCounter = registers.shorts[PC];
+    if (programCounter == 0x40
+        || programCounter == 0x55 || programCounter == 0x5f || programCounter == 0xe0)
+    {
+        programCounter ++;
+    }
+
     // Update PC if a jump instruction has not been executed
     if (!pcChanged)
     {
@@ -2685,16 +2692,11 @@ int CPU::ExecuteNextInstruction()
         registers.shorts[PC] ++;
     }
 
-    /*if (registers.shorts[PC] >= 0x100)
-    {
-        registers.shorts[PC] = oldPC;
-        while(true);
-    }*/
 
     // Stop executing if program counter goes past ROM
     if (registers.shorts[PC] >= MMU::cartridgeRomBankSwitchableOffset + MMU::cartridgeRomBankSwitchableSize)
     {
-        return 0;
+        //return 0;
     }
 
     return mCycles;

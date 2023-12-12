@@ -286,11 +286,17 @@ void MMU::SwapOutRomBank(int bank)
         return;
     }
 
+    try {
     // Swap out the switchable bank with the bank specified
     currentRomBank = bank;
     memcpy(&memory[cartridgeRomBankSwitchableOffset],
-           &currentRom->bytes[cartridgeRomBank0Size + (bank * cartridgeRomBankSwitchableSize)],
+           &currentRom->bytes[bank * cartridgeRomBankSwitchableSize],
            cartridgeRomBankSwitchableSize);
+    }
+    catch (const std::exception& e)
+    {
+        std::cout << e.what(); // information from length_error printed
+    }
 }
 
 void MMU::SwitchRomRamMode(uint8_t value)

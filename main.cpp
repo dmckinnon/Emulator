@@ -148,8 +148,6 @@ int main(int argc, char* argv[])
 
     // go into ROM and start running instructions
 
-    //std::cout << "Size of game ROM: " << gameRom->size << std::endl;
-
     {
 #ifdef RP2040
         // destroy the original canvas and free up the memory
@@ -167,6 +165,15 @@ int main(int argc, char* argv[])
 
         g.Run();
     }
+
+
+    // Debugger may or may not be showing sprites
+    // boot rom appears to be broken. Debug through boot ROM again, since graphics isn't working? Probably broke it with
+    // the debugger addition
+    // Use this to test the debugger too. The debugger should be able to read the tiles from VRAM
+    // This means we have to write a tile reading function
+
+    // Main game showing tiles correctly; use this as a change to get the debugger showing tiles correctly
 
     return 0;
 }
