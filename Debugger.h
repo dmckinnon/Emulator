@@ -43,7 +43,7 @@ private:
     cv::Mat tiles;
 
     // largely copies of what is in Display
-    void RenderTiles();
+    void RenderTiles(uint16_t address, int height);
     void RenderSprites(
         uint8_t controlReg,
         uint16_t address,

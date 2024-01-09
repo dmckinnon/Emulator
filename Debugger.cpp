@@ -62,12 +62,9 @@ void Debugger::ShowTiles(uint16_t address)
 
     // can honestly fake control reg. Maybe should. Force foreground drawing
 
-    RenderTiles();
-   // RenderSprites(mmu->ReadFromAddress(MMU::LCDControlAddress), address, 0, 4, 4);
-    //RenderSprites(mmu->ReadFromAddress(MMU::LCDControlAddress), address, 1, 84, 84);
-    
-
-    
+    RenderTiles(0x8000, 0);
+    RenderTiles(0x8800, 16);
+    RenderSprites(mmu->ReadFromAddress(MMU::LCDControlAddress), address, 0, 0, 32);
 }
 
 void Debugger::DebuggerThread()
@@ -168,17 +165,16 @@ void Debugger::RenderSprites(
 }
 
 
-void Debugger::RenderTiles()
+void Debugger::RenderTiles(uint16_t address, int height)
 {
-    uint16_t address = 0x8010;
+    //uint16_t address = 0x8000;
     // render tiles at 8010 for now
     // There's 24 tiles
+    // tiles are 8x8 pixels, but each pixel is 2 bytes so 16 bits
     int yOffset = 0;
     int xOffset = 0;
-    for (int i = 0; i < 25; ++i)
+    for (int i = 0; i < 32; ++i)
     {
-        // tiles are 8 bytes? Not 16?
-        //yOffset = i*8;
         auto tileAddress = address + 16*i;
         for (int y = 0; y < 8; ++y)
         {
@@ -193,7 +189,7 @@ void Debugger::RenderTiles()
                 uint8_t colourNumber = byte2 & bitPosition? 0x2 : 0x0;
                 colourNumber |= (byte1 & bitPosition? 0x1 : 0x0);
                 uint8_t grayscale = GetColour(colourNumber, MMU::BackgroundColourPaletteAddress);
-                tiles.at<uchar>(cv::Point(xPos, y)) = grayscale;
+                tiles.at<uchar>(cv::Point(xPos, y + height)) = grayscale;
             }
         }
         xOffset += 8;
