@@ -15,9 +15,8 @@ Debugger::Debugger(std::shared_ptr<MMU> mmu)
     blockEveryFrame = false;
     moveToNextFrame = false;
 
-    cv::Mat img(DEBUG_WINDOW_SIZE, DEBUG_WINDOW_SIZE, CV_8UC1);
+    cv::Mat img(32, 300, CV_8UC1);
     tiles = img;
-    //tiles = cv::Scalar(255, 255, 255);
     tileAddress = 0;
 
     // Do we also want cpu? Probably later
@@ -41,30 +40,9 @@ void Debugger::ShowTiles(uint16_t address)
     // clear previous mat
     tiles = cv::Scalar(255, 255, 255);
 
-    // draw a grid
-    // 8 80x80 squares, with lines 2 pixels thick, means each is 79 pixels?
-    for (int i = 0; i < DEBUG_WINDOW_SIZE; i += 80)
-    {
-        //cv::line(tiles, cv::Point(i, 0), cv::Point(i, DEBUG_WINDOW_SIZE), cv::Scalar(0, 0, 0), 2); 
-        //cv::line(tiles, cv::Point(0, i), cv::Point(DEBUG_WINDOW_SIZE, i), cv::Scalar(0, 0, 0), 2); 
-    }
-    //line(whiteMatrix, starting, ending, line_Color, thickness);//using line() function to draw the line//
-   
-
-    // create control register
-    uint8_t controlRegister = 0;
-
-
-    // From starting address, render each pixel of each tile?
-
-    // give it the start location in this window, and the address
-    // and it will draw the whole sprite
-
-    // can honestly fake control reg. Maybe should. Force foreground drawing
-
     RenderTiles(0x8000, 0);
     RenderTiles(0x8800, 16);
-    RenderSprites(mmu->ReadFromAddress(MMU::LCDControlAddress), address, 0, 0, 32);
+    //RenderSprites(mmu->ReadFromAddress(MMU::LCDControlAddress), address, 0, 0, 32);
 }
 
 void Debugger::DebuggerThread()
@@ -72,22 +50,13 @@ void Debugger::DebuggerThread()
     while (runDebugger)
     {
         cv::imshow("Debugger", tiles);
-        ShowTiles(0);
-        char key;// = (char) cv::waitKey(30);   // explicit cast
+        //ShowTiles(0);
+        char key = (char) cv::waitKey(30);   // explicit cast
         if (key == 's')
         {
-            //std::cout << "address in ascii: ";
-            //std::string addressString = "";
-            //std::cin >> addressString;
-
-            // get address as uint16_t
-            //int temp = std::stoi(addressString, 0, 16);
             uint16_t addr = 0;//(uint16_t)temp;
 
-            // TODO convert address
-            // probably meed to remove othe rprintfs
-
-            ShowTiles(addr);
+            ShowTiles(0);
         } 
         else if (key == 'n')
         {
@@ -179,11 +148,12 @@ void Debugger::RenderTiles(uint16_t address, int height)
         for (int y = 0; y < 8; ++y)
         {
             int yPos = y + yOffset; 
+            uint8_t byte1 = mmu->ReadFromAddress(tileAddress + y*2);
+            uint8_t byte2 = mmu->ReadFromAddress(tileAddress + y*2 + 1);
             for (int x = 0; x < 8; ++x)
             {
                 int xPos = x + xOffset;
-                uint8_t byte1 = mmu->ReadFromAddress(tileAddress + y*2);
-                uint8_t byte2 = mmu->ReadFromAddress(tileAddress + y*2 + 1);
+                
                 uint8_t bitNumber = 7 - x;
                 uint8_t bitPosition = 0x01 << bitNumber;
                 uint8_t colourNumber = byte2 & bitPosition? 0x2 : 0x0;
