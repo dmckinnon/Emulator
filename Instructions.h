@@ -3,6 +3,27 @@
 // Since there are so few registers, we just enumerate all possibilities
 // instead of trying to pull out the opcode and then the arguments
 
+#define LOAD_PREFIX 0x01
+#define ARITH_PREFIX 0x02
+#define STACK_PREFIX 0x03
+#define ALU_CODE_BITS 0x38
+#define REG_BITS 0x07
+#define PREFIX_SHIFT 6
+#define INC_DEC_CONDITION(x, z) (x == 0 && (z > 3 && z < 6))
+#define TWO_BYTE_INC_DEC 0x03
+#define INC 0x04
+#define DEC 0x05
+
+#define ADD 0
+#define ADC 1
+#define SUB 2
+#define SUBC 3
+#define AND 4
+#define XOR 5
+#define OR 6
+#define CP 7
+
+
 // Control instructions
 #define NOP         0x00
 #define STOP        0x10

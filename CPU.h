@@ -40,6 +40,7 @@ private:
         PC
     };
 
+    // opposite because endianness
     enum EightBitRegisters
     {
         F = 0,
@@ -55,6 +56,13 @@ private:
         Co,
         Pr,
     };
+
+    // Register map from assembly-indexed registers to my indexing
+    // That is, register B is 0 in assembly but cannot be 0 (at most 1)
+    // here because of the endianness of the 16 bit registers.
+    // we explicitly call out that one "register" is a HL pointer
+    uint8_t HL_pointer = 0xff;
+    uint8_t regMap[8] = {B, C, D, E, H, L, HL_pointer, A};
 
     union Registers
     {
