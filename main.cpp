@@ -25,6 +25,7 @@ struct Parameters
     // default to make things easier for me
     string romFilename = "/home/dmckinnon/Emulator/SuperMario.gb";
     string systemRomFilename = "/home/dmckinnon/Emulator/systemRom_noloops.bin";
+    bool useDebugger = false;
 };  
 
 Parameters ParseArgs(int argc, char* argv[])
@@ -39,6 +40,10 @@ Parameters ParseArgs(int argc, char* argv[])
         else if (strcmp(argv[i], "-s") == 0)
         {
             p.systemRomFilename = argv[++i];
+        }
+        else if (strcmp(argv[i], "-d") == 0)
+        {
+            p.useDebugger = true;
         }
         
         // more args 
@@ -154,7 +159,7 @@ int main(int argc, char* argv[])
         canvas.~GFXcanvas16();
 #endif
 
-        Gameboy g = Gameboy(systemRom, lcd);
+        Gameboy g = Gameboy(systemRom, lcd, parameters.useDebugger);
         g.LoadRom(gameRom);
 
 #ifdef RP2040

@@ -14,7 +14,8 @@ Gameboy* g = nullptr;
 
 Gameboy::Gameboy(
     std::shared_ptr<Rom> systemRom,
-    std::shared_ptr<ST7789> lcd) :
+    std::shared_ptr<ST7789> lcd,
+    bool useDebugger) :
     mmu(std::make_shared<MMU>(*systemRom)),
     cpu(mmu),
     display(
@@ -33,7 +34,8 @@ Gameboy::Gameboy(
             this->cpu.SetJoypadInterrupt(joypadRegister);
             // debounce
             //std::this_thread::sleep_for(std::chrono::milliseconds(5));
-        })
+        },
+        useDebugger)
 {
     cpu.SetDisplaySignalFunc([this](){
         this->display.ClockSignalForScanline();

@@ -11,7 +11,7 @@
                 "-g",
                 "-w",
                 "-O0",
-                "-fsanitize=address",
+                //"-fsanitize=address",
                 "-std=gnu++2a",
                 "${workspaceFolder}/*.cpp",
                 //"-I/usr/include/opencv4",

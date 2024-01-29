@@ -100,7 +100,8 @@ public:
         std::shared_ptr<ST7789> lcd,
         std::function<void()> setVBlankInterrupt,
         std::function<void()> setLCDStatInterrupt,
-        std::function<void(uint8_t)> setJoypadInterrupt);
+        std::function<void(uint8_t)> setJoypadInterrupt,
+        bool useDebugger);
     ~Display();
 
     bool IsLCDEnabled();

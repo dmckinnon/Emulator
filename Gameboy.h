@@ -16,7 +16,7 @@
 class Gameboy
 {
 public:
-    Gameboy(std::shared_ptr<Rom> rom, std::shared_ptr<ST7789> lcd = nullptr);
+    Gameboy(std::shared_ptr<Rom> rom, std::shared_ptr<ST7789> lcd = nullptr, bool useDebugger = false);
     ~Gameboy();
 
     bool LoadRom(std::shared_ptr<Rom> rom);

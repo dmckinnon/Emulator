@@ -653,7 +653,7 @@ int CPU::ExecuteNextInstruction()
     {
         // This is one of many load instructions. Extract arguments:
         uint8_t x = (instruction & 0x38) >> 3;
-        byte y = (instruction & 0x7);
+        uint8_t y = (instruction & 0x7);
         x = regMap[x];
         y = regMap[y];
         
@@ -774,7 +774,6 @@ int CPU::ExecuteNextInstruction()
                 {
                     Cp8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[HL]));
                     mCycles += 1;
-                    mCycles += 1;
                 }
                 break;
             }
@@ -783,7 +782,7 @@ int CPU::ExecuteNextInstruction()
 
     }
     // INC and DEC
-    if (INC_DEC_CONDITION(prefix, arg2))
+    else if (INC_DEC_CONDITION(prefix, arg2))
     {
         if (arg2 == TWO_BYTE_INC_DEC) 
         {
@@ -828,6 +827,11 @@ int CPU::ExecuteNextInstruction()
             }
         }
     }
+    else
+    { 
+
+
+    // Do jumps next
 
 
     // PUSH and POP have a number of conditions
@@ -838,1538 +842,1147 @@ int CPU::ExecuteNextInstruction()
 
 
 
-    switch (instruction)
-    {
-        // Control
-        case NOP:
+        switch (instruction)
         {
-            // NOP takes 1 M-cycle == 4 clock cycles
-            //mCycles += 1;
-            break;
-        }
-        case STOP:
-        {
-            // HALT EXECUTION
-            // hack for now
-            // print out memory from 0xA000 until null terminator
-            uint16_t address = 0xA000;
-            unsigned char c = mmu->ReadFromAddress(address);
-            printf("End of test:\n");
-            while (c != 0)
+            // Control
+            case NOP:
             {
-                printf("%c", c);
-                address ++;
-                c = mmu->ReadFromAddress(address);
+                // NOP takes 1 M-cycle == 4 clock cycles
+                //mCycles += 1;
+                break;
             }
-            printf("\n");
-
-            return -1;
-        }
-        case HALT:
-        {
-            return 1;
-        }
-        case DI:
-        {
-            disableInterruptsNextCycle = true;
-            //mCycles += 1;
-            break;
-        }
-        case EI:
-        {
-            enableInterruptsNextCycle = true;
-            //mCycles += 1;
-            break;
-        }
-
-        ////////////////////
-        // Jumps
-
-        case JUMP_HL:
-        {
-            // Jump to address in HL
-            pcChanged = true;
-            registers.shorts[PC] = registers.shorts[HL];
-            mCycles += 1;
-            break;
-        }
-        case JUMP_a16:
-        {
-            pcChanged = true;
-            // Jump to address in next 2 bytes
-            // TODO shouldn't this get 2 bytes not one??
-            uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
-            registers.shorts[PC] = address;
-            mCycles += 3;
-            break;
-        }
-
-        // Conditional jumps
-        case JUMP_C_a16:
-        {
-            pcChanged = true;
-            // Jump to address in next 2 bytes if carry flag is set
-            if (registers.bytes[F] & CarryFlag)
+            case STOP:
             {
-                uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
-                registers.shorts[PC] = address;
-                mCycles += 3;
-            }
-            else
-            {
-                registers.shorts[PC] += 3;
-                mCycles += 2;
-            }
-            break;
-        }
-        case JUMP_NC_a16:
-        {
-            pcChanged = true;
-            // Jump to address in next 2 bytes if carry flag is not set
-            if (!(registers.bytes[F] & CarryFlag))
-            {
-                uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
-                registers.shorts[PC] = address;
-                mCycles += 3;
-            }
-            else
-            {
-                registers.shorts[PC] += 3;
-                mCycles += 2;
-            }
-            break;
-        }
-        case JUMP_Z_a16:
-        {
-            pcChanged = true;
-            // Jump to address in next 2 bytes if zero flag is set
-            if (registers.bytes[F] & ZeroFlag)
-            {
-                uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
-                registers.shorts[PC] = address;
-                mCycles += 3;
-            }
-            else
-            {
-                registers.shorts[PC] += 3;
-                mCycles += 2;
-            }
-            break;
-        }
-        case JUMP_NZ_a16:
-        {
-            pcChanged = true;
-            // Jump to address in next 2 bytes if zero flag is not set
-            if (!(registers.bytes[F] & ZeroFlag))
-            {
-                uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
-                registers.shorts[PC] = address;
-                mCycles += 3;
-            }
-            else
-            {
-                registers.shorts[PC] += 3;
-                mCycles += 2;
-            }
-            break;
-        }
-
-        // Relative jumps
-        case JUMP_REL_r8:
-        {
-            pcChanged = true;
-            // Jump to address relative to current PC
-            // This is a signed 8 bit value
-            int8_t offset = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-            registers.shorts[PC] += offset + 2;
-            mCycles += 3;
-            break;
-        }
-        case JUMP_REL_C_r8:
-        {
-            pcChanged = true;
-            // Jump to address relative to current PC if carry flag is set
-            // This is a signed 8 bit value
-            if (registers.bytes[F] & CarryFlag)
-            {
-                int8_t offset = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-                registers.shorts[PC] += offset + 2;
-                mCycles += 3;
-            }
-            else
-            {
-                registers.shorts[PC] += 2;
-                mCycles += 2;
-            }
-            break;
-        }
-        case JUMP_REL_NC_r8:
-        {
-            pcChanged = true;
-            // Jump to address relative to current PC if carry flag is not set
-            // This is a signed 8 bit value
-            if (!(registers.bytes[F] & CarryFlag))
-            {
-                int8_t offset = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-                registers.shorts[PC] += offset + 2;
-                mCycles += 3;
-            }
-            else
-            {
-                registers.shorts[PC] += 2;
-                mCycles += 2;
-            }
-            break;
-        }
-        case JUMP_REL_Z_r8:
-        {
-            pcChanged = true;
-            // Jump to address relative to current PC if zero flag is set
-            // This is a signed 8 bit value
-            if (registers.bytes[F] & ZeroFlag)
-            {
-                int8_t offset = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-                registers.shorts[PC] += offset + 2;
-                mCycles += 3;
-            }
-            else
-            {
-                registers.shorts[PC] += 2;
-                mCycles += 2;
-            }
-            break;
-        }
-        case JUMP_REL_NZ_r8:
-        {
-            pcChanged = true;
-            // Jump to address relative to current PC if zero flag is not set
-            // This is a signed 8 bit value
-            if (!(registers.bytes[F] & ZeroFlag))
-            {
-                int8_t offset = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-                registers.shorts[PC] += offset + 2;
-                mCycles += 3;
-            }
-            else
-            {
-                registers.shorts[PC] += 2;
-                mCycles += 2;
-            }
-            break;
-        }
-
-        // Calls and returns
-        case CALL_a16:
-        {
-            pcChanged = true;
-            // Push current PC onto stack and jump to address in next 2 bytes
-            //printf("Push current PC: %x. Jumping to %x\n",
-            //    registers.shorts[PC]+3,
-            //    mmu->ReadFromAddress(registers.shorts[PC] + 1));
-            mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 3));
-            mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 3) >> 8));
-            --registers.shorts[SP];
-            uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
-            registers.shorts[PC] = address;
-            mCycles += 6;
-            break;
-        }
-        case CALL_C_a16:
-        {
-            pcChanged = true;
-            // Push current PC onto stack and jump to address in next 2 bytes if carry flag is set
-            if (registers.bytes[F] & CarryFlag)
-            {
-                mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 3));
-                mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 3) >> 8));
-                --registers.shorts[SP];
-                uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
-                registers.shorts[PC] = address;
-                mCycles += 6;
-            }
-            else
-            {
-                registers.shorts[PC] += 3;
-                mCycles += 3;
-            }
-            break;
-        }
-        case CALL_NC_a16:
-        {
-            pcChanged = true;
-            // Push current PC onto stack and jump to address in next 2 bytes if carry flag is not set
-            if (!(registers.bytes[F] & CarryFlag))
-            {
-                mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 3));
-                mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 3) >> 8));
-                --registers.shorts[SP];
-                uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
-                registers.shorts[PC] = address;
-                mCycles += 6;
-            }
-            else
-            {
-                registers.shorts[PC] += 3;
-                mCycles += 3;
-            }
-            break;
-        }
-        case CALL_Z_a16:
-        {
-            pcChanged = true;
-            // Push current PC onto stack and jump to address in next 2 bytes if zero flag is set
-            if (registers.bytes[F] & ZeroFlag)
-            {
-                mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 3));
-                mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 3) >> 8));
-                --registers.shorts[SP];
-                uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
-                registers.shorts[PC] = address;
-                mCycles += 6;
-            }
-            else
-            {
-                registers.shorts[PC] += 3;
-                mCycles += 3;
-            }
-            break;
-        }
-        case CALL_NZ_a16:
-        {
-            pcChanged = true;
-            // Push current PC onto stack and jump to address in next 2 bytes if zero flag is not set
-            if (!(registers.bytes[F] & ZeroFlag))
-            {
-                mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 3));
-                mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 3) >> 8));
-                --registers.shorts[SP];
-                uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
-                registers.shorts[PC] = address;
-                mCycles += 6;
-            }
-            else
-            {
-                registers.shorts[PC] += 3;
-                mCycles += 3;
-            }
-            break;
-        }
-
-        case RETURN:
-        {
-            pcChanged = true;
-            // Pop 2 bytes from stack and jump to that address
-            uint16_t val = (mmu->ReadFromAddress(registers.shorts[SP]+1) << 8) | (mmu->ReadFromAddress(registers.shorts[SP] + 2));
-
-            //printf("Return to %x, %d\n", val, val);
-            registers.shorts[PC] = mmu->ReadFromAddress(++registers.shorts[SP]) << 8;
-            uint16_t topBits = mmu->ReadFromAddress(++registers.shorts[SP]);
-            registers.shorts[PC] |= topBits;
-            mCycles += 4;
-            break;
-        }
-        case RETURN_I:
-        {
-            pcChanged = true;
-            // Pop 2 bytes from stack and jump to that address
-            registers.shorts[PC] = mmu->ReadFromAddress(++registers.shorts[SP]) << 8;
-            registers.shorts[PC] |= mmu->ReadFromAddress(++registers.shorts[SP]);
-            // Enable interrupts
-            enableInterruptsNextCycle = true;
-            mCycles += 4;
-            break;
-        }
-        case RETURN_C:
-        {
-            
-            // Pop 2 bytes from stack and jump to that address if carry flag is set
-            if (registers.bytes[F] & CarryFlag)
-            {
-                pcChanged = true;
-                registers.shorts[PC] = mmu->ReadFromAddress(++registers.shorts[SP]) << 8;
-                registers.shorts[PC] |= mmu->ReadFromAddress(++registers.shorts[SP]);
-                mCycles += 5;
-            }
-            else
-            {
-                mCycles += 2;
-            }
-            break;
-        }
-        case RETURN_NC:
-        {
-            
-            // Pop 2 bytes from stack and jump to that address if carry flag is not set
-            if (!(registers.bytes[F] & CarryFlag))
-            {
-                pcChanged = true;
-                registers.shorts[PC] = mmu->ReadFromAddress(++registers.shorts[SP]) << 8;
-                registers.shorts[PC] |= mmu->ReadFromAddress(++registers.shorts[SP]);
-                mCycles += 5;
-            }
-            else
-            {
-                mCycles += 2;
-            }
-            break;
-        }
-        case RETURN_Z:
-        {
-            
-            // Pop 2 bytes from stack and jump to that address if zero flag is set
-            if (registers.bytes[F] & ZeroFlag)
-            {
-                pcChanged = true;
-                registers.shorts[PC] = mmu->ReadFromAddress(++registers.shorts[SP]) << 8;
-                registers.shorts[PC] |= mmu->ReadFromAddress(++registers.shorts[SP]);
-                mCycles += 5;
-            }
-            else
-            {
-                mCycles += 2;
-            }
-            break;
-        }
-        case RETURN_NZ:
-        {
-            
-            // Pop 2 bytes from stack and jump to that address if zero flag is not set
-            if (!(registers.bytes[F] & ZeroFlag))
-            {
-                pcChanged = true;
-                registers.shorts[PC] = mmu->ReadFromAddress(++registers.shorts[SP]) << 8;
-                registers.shorts[PC] |= mmu->ReadFromAddress(++registers.shorts[SP]);
-                mCycles += 5;
-            }
-            else
-            {
-                mCycles += 2;
-            }
-            break;
-        }
-
-        // RESET instructions
-        case RESET_00H:
-        {
-            pcChanged = true;
-            // Push current PC onto stack and jump to address 0x0000
-            mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
-            mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
-            --registers.shorts[SP];
-            registers.shorts[PC] = 0x0000;
-            mCycles += 4;
-            break;
-        }
-        case RESET_08H:
-        {
-            pcChanged = true;
-            // Push current PC onto stack and jump to address 0x0008
-            mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
-            mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
-            --registers.shorts[SP];
-            registers.shorts[PC] = 0x0008;
-            mCycles += 4;
-            break;
-        }
-        case RESET_10H:
-        {
-            pcChanged = true;
-            // Push current PC onto stack and jump to address 0x0010
-            mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
-            mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
-            --registers.shorts[SP];
-            registers.shorts[PC] = 0x0010;
-            mCycles += 4;
-            break;
-        }
-        case RESET_18H:
-        {
-            pcChanged = true;
-            // Push current PC onto stack and jump to address 0x0018
-            mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
-            mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
-            --registers.shorts[SP];
-            registers.shorts[PC] = 0x0018;
-            mCycles += 4;
-            break;
-        }
-        case RESET_20H:
-        {
-            pcChanged = true;
-            // Push current PC onto stack and jump to address 0x0020
-            mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
-            mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
-            --registers.shorts[SP];
-            registers.shorts[PC] = 0x0020;
-            mCycles += 4;
-            break;
-        }
-        case RESET_28H:
-        {
-            pcChanged = true;
-            // Push current PC onto stack and jump to address 0x0028
-            mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
-            mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
-            --registers.shorts[SP];
-            registers.shorts[PC] = 0x0028;
-            mCycles += 4;
-            break;
-        }
-        case RESET_30H:
-        {
-            pcChanged = true;
-            // Push current PC onto stack and jump to address 0x0030
-            mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
-            mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
-            --registers.shorts[SP];
-            registers.shorts[PC] = 0x0030;
-            mCycles += 4;
-            break;
-        }
-        case RESET_38H:
-        {
-            pcChanged = true;
-            // Push current PC onto stack and jump to address 0x0038
-            mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
-            mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
-            --registers.shorts[SP];
-            registers.shorts[PC] = 0x0038;
-            mCycles += 4;
-            break;
-        }
-        
-
-        /////////////////////////////
-        // 8 bit arithmetic and logic
-
-        // Set carry flag instruction
-        case SCF:
-        {
-            // Set carry, clear N and H
-            registers.bytes[F] |= CarryFlag;
-            // reset subtraction flag
-            registers.bytes[F] &= ~AddSubFlag;
-            // reset half carry flag
-            registers.bytes[F] &= ~HalfCarryFlag;
-            mCycles += 1;
-            break;
-        }
-
-        // Decimal Adjust Accumulator instruction
-        // This adjusts binary computation and flags to be BCD
-        case DAA:
-        {
-            mCycles += 1;
-            uint8_t a = registers.bytes[A];
-            if (!(registers.bytes[F] & AddSubFlag))
-            {  // after an addition, adjust if (half-)carry occurred or if result is out of bounds
-                if ((registers.bytes[F] & CarryFlag) || a > 0x99)
+                // HALT EXECUTION
+                // hack for now
+                // print out memory from 0xA000 until null terminator
+                uint16_t address = 0xA000;
+                unsigned char c = mmu->ReadFromAddress(address);
+                printf("End of test:\n");
+                while (c != 0)
                 {
-                    a += 0x60;
-                    registers.bytes[F] |= CarryFlag;
+                    printf("%c", c);
+                    address ++;
+                    c = mmu->ReadFromAddress(address);
                 }
-                if ((registers.bytes[F] & HalfCarryFlag) || (a & 0x0f) > 0x09)
-                {
-                    a += 0x6;
-                }
+                printf("\n");
+
+                return -1;
             }
-            else
-            {  // after a subtraction, only adjust if (half-)carry occurred
+            case HALT:
+            {
+                return 1;
+            }
+            case DI:
+            {
+                disableInterruptsNextCycle = true;
+                //mCycles += 1;
+                break;
+            }
+            case EI:
+            {
+                enableInterruptsNextCycle = true;
+                //mCycles += 1;
+                break;
+            }
+
+            ////////////////////
+            // Jumps
+
+            case JUMP_HL:
+            {
+                // Jump to address in HL
+                pcChanged = true;
+                registers.shorts[PC] = registers.shorts[HL];
+                mCycles += 1;
+                break;
+            }
+            case JUMP_a16:
+            {
+                pcChanged = true;
+                // Jump to address in next 2 bytes
+                // TODO shouldn't this get 2 bytes not one??
+                uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
+                registers.shorts[PC] = address;
+                mCycles += 3;
+                break;
+            }
+
+            // Conditional jumps
+            case JUMP_C_a16:
+            {
+                pcChanged = true;
+                // Jump to address in next 2 bytes if carry flag is set
                 if (registers.bytes[F] & CarryFlag)
                 {
-                    a -= 0x60;
+                    uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
+                    registers.shorts[PC] = address;
+                    mCycles += 3;
                 }
-                if (registers.bytes[F] & HalfCarryFlag)
+                else
                 {
-                    a -= 0x6;
+                    registers.shorts[PC] += 3;
+                    mCycles += 2;
                 }
+                break;
             }
-            // these flags are always updated
-            // the usual z flag
-            if (a == 0)
+            case JUMP_NC_a16:
             {
-                registers.bytes[F] |= ZeroFlag;
+                pcChanged = true;
+                // Jump to address in next 2 bytes if carry flag is not set
+                if (!(registers.bytes[F] & CarryFlag))
+                {
+                    uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
+                    registers.shorts[PC] = address;
+                    mCycles += 3;
+                }
+                else
+                {
+                    registers.shorts[PC] += 3;
+                    mCycles += 2;
+                }
+                break;
             }
-            registers.bytes[F] &= ~HalfCarryFlag; // h flag is always cleared
-
-            // Put the updated value back into register A
-            registers.bytes[A] = a;
-
-            break;
-        }
-
-        // Complement Accumulator instruction
-        // This flips all bits in the accumulator
-        case CPL:
-        {
-            // Flip all bits in A
-            registers.bytes[A] = ~registers.bytes[A];
-            // Set subtraction flag
-            registers.bytes[F] |= AddSubFlag;
-            // Set half carry flag
-            registers.bytes[F] |= HalfCarryFlag;
-            mCycles += 1;
-            break;
-        }
-
-        // Complement Carry Flag instruction
-        // This flips the carry flag
-        case CCF:
-        {
-            // Flip carry flag
-            registers.bytes[F] ^= CarryFlag;
-            // Reset subtraction flag
-            registers.bytes[F] &= ~AddSubFlag;
-            // Reset half carry flag
-            registers.bytes[F] &= ~HalfCarryFlag;
-            mCycles += 1;
-            break;
-        }
-
-        case ADD_A_d8:
-        {
-            Add8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
-            registers.shorts[PC] ++;
-            mCycles += 1;
-            break;
-        }
-
-        // Subtract each register from A
-        case SUB_d8:
-        {
-            Sub8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
-            registers.shorts[PC] ++;
-            mCycles += 1;
-            break;
-        }
-
-        // Add each register with A and the carry flag
-        case ADC_d8:
-        {
-            AddC8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
-            registers.shorts[PC] ++;
-            mCycles += 1;
-            break;
-        }
-
-        // Subtract each register and the carry flag from A 
-        case SBC_d8:
-        {
-            SubC8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
-            registers.shorts[PC] ++;
-            mCycles += 1;
-            break;
-        }
-
-        // AND each register with A
-        case AND_d8:
-        {
-            And8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
-            registers.shorts[PC] ++;
-            mCycles += 1;
-            break;
-        }
-
-        // OR each register with A
-        case OR_d8:
-        {
-            Or8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
-            registers.shorts[PC] ++;
-            mCycles += 1;
-            break;
-        }
-
-        // XOR each register with A
-        case XOR_d8:
-        {
-            Xor8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
-            registers.shorts[PC] ++;
-            mCycles += 1;
-            break;
-        }
-
-        // Compare the register with A and store the result in the flags
-        case CP_d8:
-        {
-            Cp8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1));
-            registers.shorts[PC] ++;
-            mCycles += 1;
-            break;
-        }
-
-        // 8-bit rotate/shift instructions
-        case ROTATE_LEFT_A:
-        {
-            // Capture the MSB
-            uint8_t msb = (registers.bytes[A] & MostSigBit) >> 3;
-            // shift the A register left by one bit
-            registers.bytes[A] <<= 1;
-            // set the LSB to the value of the carry flag
-            registers.bytes[A] |= (registers.bytes[F] & CarryFlag) >> 4;
-            // Zero all flags
-            registers.bytes[F] &= ~AllFlags;
-            // Store the MSB in the carry flag
-            registers.bytes[F] |= msb;
-
-            break;
-        }
-        case ROTATE_LEFT_CA:
-        {
-            // Capture the MSB
-            uint8_t msb = (registers.bytes[A] & MostSigBit) >> 7;
-            // Shift the A register left by one bit
-            registers.bytes[A] <<= 1;
-            // Set the LSB to the value of the MSB
-            registers.bytes[A] |= msb;
-            // Zero all flags
-            registers.bytes[F] &= ~AllFlags;
-            // Store the MSB in the carry flag
-            registers.bytes[F] |= msb << 4;
-
-            break;
-        }
-        case ROTATE_RIGHT_A:
-        {
-            // Capture the LSB
-            uint8_t lsb = (registers.bytes[A] & LeastSigBit) >> 3;
-            // Shift the A register right by one bit
-            registers.bytes[A] >>= 1;
-            // Set the MSB to the value of the carry flag
-            registers.bytes[A] |= (registers.bytes[F] & CarryFlag) >> 4;
-            // Zero all flags
-            registers.bytes[F] &= ~AllFlags;
-            // Store the LSB in the carry flag
-            registers.bytes[F] |= lsb;
-
-            break;
-        }
-        case ROTATE_RIGHT_CA:
-        {
-            // Capture the LSB
-            uint8_t lsb = (registers.bytes[A] & LeastSigBit) >> 3;
-            // Shift the A register right by one bit
-            registers.bytes[A] >>= 1;
-            // Set the MSB to the value of the LSB
-            registers.bytes[A] |= lsb >> 4;
-            // Zero all flags
-            registers.bytes[F] &= ~AllFlags;
-            // Store the LSB in the carry flag
-            registers.bytes[F] |= lsb;
-
-            break;
-        }
-
-        /////////////////////////////
-        // 8 bit loading
-
-        // Load immediate value into each register
-        case LOAD_A_d8:
-        {
-            registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-            registers.shorts[PC] ++;
-            mCycles += 1;
-            break;
-        }
-        case LOAD_B_d8:
-        {
-            registers.bytes[B] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-            registers.shorts[PC] ++;
-            mCycles += 1;
-            break;
-        }
-        case LOAD_C_d8:
-        {
-            registers.bytes[C] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-            registers.shorts[PC] ++;
-            mCycles += 1;
-            break;
-        }
-        case LOAD_D_d8:
-        {
-            registers.bytes[D] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-            registers.shorts[PC] ++;
-            mCycles += 1;
-            break;
-        }
-        case LOAD_E_d8:
-        {
-            registers.bytes[E] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-            registers.shorts[PC] ++;
-            mCycles += 1;
-            break;
-        }
-        case LOAD_H_d8:
-        {
-            registers.bytes[H] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-            registers.shorts[PC] ++;
-            mCycles += 1;
-            break;
-        }
-        case LOAD_L_d8:
-        {
-            registers.bytes[L] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-            registers.shorts[PC] ++;
-            mCycles += 1;
-            break;
-        }
-        case LOAD_HL_d8:
-        {
-            mmu->WriteToAddress(registers.shorts[HL], mmu->ReadFromAddress(registers.shorts[PC] + 1));
-            registers.shorts[PC] ++;
-            mCycles += 2;
-            break;
-        }
-
-        // Load value from one register into A
-        case LOAD_A_B:
-        {
-            registers.bytes[A] = registers.bytes[B];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_A_C:
-        {
-            registers.bytes[A] = registers.bytes[C];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_A_D:
-        {
-            registers.bytes[A] = registers.bytes[D];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_A_E:
-        {
-            registers.bytes[A] = registers.bytes[E];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_A_H:
-        {
-            registers.bytes[A] = registers.bytes[H];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_A_L:
-        {
-            registers.bytes[A] = registers.bytes[L];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_A_HL:
-        {
-            registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[HL]);
-            mCycles += 1;
-            break;
-        }
-        case LOAD_A_A:
-        {
-            registers.bytes[A] = registers.bytes[A];
-            //mCycles += 1;
-            break;
-        }
-        
-        // Load another register into B
-        case LOAD_B_A:
-        {
-            registers.bytes[B] = registers.bytes[A];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_B_B:
-        {
-            registers.bytes[B] = registers.bytes[B];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_B_C:
-        {
-            registers.bytes[B] = registers.bytes[C];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_B_D:
-        {
-            registers.bytes[B] = registers.bytes[D];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_B_E:
-        {
-            registers.bytes[B] = registers.bytes[E];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_B_H:
-        {
-            registers.bytes[B] = registers.bytes[H];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_B_L:
-        {
-            registers.bytes[B] = registers.bytes[L];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_B_HL:
-        {
-            registers.bytes[B] = mmu->ReadFromAddress(registers.shorts[HL]);
-            mCycles += 1;
-            break;
-        }
-
-        // Load another register into C
-        case LOAD_C_A:
-        {
-            registers.bytes[C] = registers.bytes[A];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_C_B:
-        {
-            registers.bytes[C] = registers.bytes[B];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_C_C:
-        {
-            registers.bytes[C] = registers.bytes[C];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_C_D:
-        {
-            registers.bytes[C] = registers.bytes[D];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_C_E:
-        {
-            registers.bytes[C] = registers.bytes[E];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_C_H:
-        {
-            registers.bytes[C] = registers.bytes[H];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_C_L:
-        {
-            registers.bytes[C] = registers.bytes[L];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_C_HL:
-        {
-            registers.bytes[C] = mmu->ReadFromAddress(registers.shorts[HL]);
-            mCycles += 1;
-            break;
-        }
-
-        // Load another register into D
-        case LOAD_D_A:
-        {
-            registers.bytes[D] = registers.bytes[A];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_D_B:
-        {
-            registers.bytes[D] = registers.bytes[B];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_D_C:
-        {
-            registers.bytes[D] = registers.bytes[C];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_D_D:
-        {
-            registers.bytes[D] = registers.bytes[D];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_D_E:
-        {
-            registers.bytes[D] = registers.bytes[E];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_D_H:
-        {
-            registers.bytes[D] = registers.bytes[H];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_D_L:
-        {
-            registers.bytes[D] = registers.bytes[L];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_D_HL:
-        {
-            registers.bytes[D] = mmu->ReadFromAddress(registers.shorts[HL]);
-            mCycles += 1;
-            break;
-        }
-
-        // Load another register into E
-        case LOAD_E_A:
-        {
-            registers.bytes[E] = registers.bytes[A];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_E_B:
-        {
-            registers.bytes[E] = registers.bytes[B];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_E_C:
-        {
-            registers.bytes[E] = registers.bytes[C];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_E_D:
-        {
-            registers.bytes[E] = registers.bytes[D];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_E_E:
-        {
-            registers.bytes[E] = registers.bytes[E];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_E_H:
-        {
-            registers.bytes[E] = registers.bytes[H];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_E_L:
-        {
-            registers.bytes[E] = registers.bytes[L];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_E_HL:
-        {
-            registers.bytes[E] = mmu->ReadFromAddress(registers.shorts[HL]);
-            mCycles += 1;
-            break;
-        }
-
-        // Load another register into H
-        case LOAD_H_A:
-        {
-            registers.bytes[H] = registers.bytes[A];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_H_B:
-        {
-            registers.bytes[H] = registers.bytes[B];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_H_C:
-        {
-            registers.bytes[H] = registers.bytes[C];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_H_D:
-        {
-            registers.bytes[H] = registers.bytes[D];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_H_E:
-        {
-            registers.bytes[H] = registers.bytes[E];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_H_H:
-        {
-            registers.bytes[H] = registers.bytes[H];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_H_L:
-        {
-            registers.bytes[H] = registers.bytes[L];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_H_HL:
-        {
-            registers.bytes[H] = mmu->ReadFromAddress(registers.shorts[HL]);
-            mCycles += 1;
-            break;
-        }
-
-        // Load another register into L
-        case LOAD_L_A:
-        {
-            registers.bytes[L] = registers.bytes[A];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_L_B:
-        {
-            registers.bytes[L] = registers.bytes[B];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_L_C:
-        {
-            registers.bytes[L] = registers.bytes[C];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_L_D:
-        {
-            registers.bytes[L] = registers.bytes[D];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_L_E:
-        {
-            registers.bytes[L] = registers.bytes[E];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_L_H:
-        {
-            registers.bytes[L] = registers.bytes[H];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_L_L:
-        {
-            registers.bytes[L] = registers.bytes[L];
-            //mCycles += 1;
-            break;
-        }
-        case LOAD_L_HL:
-        {
-            registers.bytes[L] = mmu->ReadFromAddress(registers.shorts[HL]);
-            mCycles += 1;
-            break;
-        }
-
-        // Load the value of a register into the memory address pointed to by HL
-        case LOAD_HL_A:
-        {
-            mmu->WriteToAddress(registers.shorts[HL], registers.bytes[A]);
-            mCycles += 1;
-            break;
-        }
-        case LOAD_HL_B:
-        {
-            mmu->WriteToAddress(registers.shorts[HL], registers.bytes[B]);
-            mCycles += 1;
-            break;
-        }
-        case LOAD_HL_C:
-        {
-            mmu->WriteToAddress(registers.shorts[HL], registers.bytes[C]);
-            mCycles += 1;
-            break;
-        }
-        case LOAD_HL_D:
-        {
-            mmu->WriteToAddress(registers.shorts[HL], registers.bytes[D]);
-            mCycles += 1;
-            break;
-        }
-        case LOAD_HL_E:
-        {
-            mmu->WriteToAddress(registers.shorts[HL], registers.bytes[E]);
-            mCycles += 1;
-            break;
-        }
-        case LOAD_HL_H:
-        {
-            mmu->WriteToAddress(registers.shorts[HL], registers.bytes[H]);
-            mCycles += 1;
-            break;
-        }
-        case LOAD_HL_L:
-        {
-            mmu->WriteToAddress(registers.shorts[HL], registers.bytes[L]);
-            mCycles += 1;
-            break;
-        }
-
-        // 8 bit special load instructions
-
-        // load A into BC or DE, and vice versa
-        case LOAD_A_BC:
-        {
-            registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[BC]);
-            mCycles += 1;
-            break;
-        }
-        case LOAD_A_DE:
-        {
-            registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[DE]);
-            mCycles += 1;
-            break;
-        }
-        case LOAD_BC_A:
-        {
-            mmu->WriteToAddress(registers.shorts[BC], registers.bytes[A]);
-            mCycles += 1;
-            break;
-        }
-        case LOAD_DE_A:
-        {
-            mmu->WriteToAddress(registers.shorts[DE], registers.bytes[A]);
-            mCycles += 1;
-            break;
-        }
-
-        // Load and store with offset address
-        case LOAD_Cv_A:
-        {
-            mmu->WriteToAddress(MMU::ioRegistersOffset + registers.bytes[C], registers.bytes[A]);
-            mCycles += 1;
-            break;
-        }
-        case LOAD_A_Cv:
-        {
-            registers.bytes[A] = mmu->ReadFromAddress(MMU::ioRegistersOffset + registers.bytes[C]);
-            mCycles += 1;
-            break;
-        }
-
-        // Load and store to absolute address
-        case LOAD_a16_A:
-        {
-            uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
-            registers.shorts[PC] += 2;
-            mmu->WriteToAddress(address, registers.bytes[A]);
-            mCycles += 3;
-            break;
-        }
-        case LOAD_A_a16:
-        {
-            uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
-            registers.shorts[PC] += 2;
-            registers.bytes[A] = mmu->ReadFromAddress(address);
-            mCycles += 3;
-            break;
-        }
-
-        // Load and store from HL pointer to A, incrementing or decrementing the pointer after the fact
-        case LOAD_A_HLplus:
-        {
-            registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[HL]);
-            registers.shorts[HL] ++;
-            mCycles += 1;
-            break;
-        }
-        case LOAD_A_HLminus:
-        {
-            registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[HL]);
-            registers.shorts[HL] --;
-            mCycles += 1;
-            break;
-        }
-        case LOAD_HLplus_A:
-        {
-            mmu->WriteToAddress(registers.shorts[HL], registers.bytes[A]);
-            registers.shorts[HL] ++;
-            mCycles += 1;
-            break;
-        }
-        case LOAD_HLminus_A:
-        {
-            mmu->WriteToAddress(registers.shorts[HL], registers.bytes[A]);
-            registers.shorts[HL] --;
-            mCycles += 1;
-            break;
-        }
-
-        // Load and store from absolute 8 bit address offset by 0xFF00
-        case LOAD_H_a8_A:
-        {
-            uint8_t a8 = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-            mmu->WriteToAddress(MMU::ioRegistersOffset + a8, registers.bytes[A]);
-            registers.shorts[PC] ++;
-            mCycles += 2;
-            break;
-        }
-        case LOAD_H_A_a8:
-        {
-            uint8_t a8 = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-            registers.bytes[A] = mmu->ReadFromAddress(MMU::ioRegistersOffset + a8);
-            registers.shorts[PC] ++;
-            mCycles += 2;
-            break;
-        }
-
-        /////////////////////////////////
-        // 16 bit arithmetic instructions
-        case INC_BC:
-        {
-            registers.shorts[BC] ++;
-            mCycles += 1;
-            break;
-        }
-        case INC_DE:
-        {
-            registers.shorts[DE] ++;
-            mCycles += 1;
-            break;
-        }
-        case INC_HL:
-        {
-            registers.shorts[HL] ++;
-            mCycles += 1;
-            break;
-        }
-        case INC_SP:
-        {
-            registers.shorts[SP] ++;
-            mCycles += 1;
-            break;
-        }
-
-        case DEC_BC:
-        {
-            registers.shorts[BC] --;
-            mCycles += 1;
-            break;
-        }
-        case DEC_DE:
-        {
-            registers.shorts[DE] --;
-            mCycles += 1;
-            break;
-        }
-        case DEC_HL:
-        {
-            registers.shorts[HL] --;
-            mCycles += 1;
-            break;
-        }
-        case DEC_SP:
-        {
-            registers.shorts[SP] --;
-            mCycles += 1;
-            break;
-        }
-
-        case ADD_HL_BC:
-        {
-            Add16(registers.shorts[HL], registers.shorts[BC], registers.shorts[HL]);
-            mCycles += 1;
-            break;
-        }
-        case ADD_HL_DE:
-        {
-            Add16(registers.shorts[HL], registers.shorts[DE], registers.shorts[HL]);
-            mCycles += 1;
-            break;
-        }
-        case ADD_HL_HL:
-        {
-            Add16(registers.shorts[HL], registers.shorts[HL], registers.shorts[HL]);
-            mCycles += 1;
-            break;
-        }
-        case ADD_HL_SP:
-        {
-            Add16(registers.shorts[HL], registers.shorts[SP], registers.shorts[HL]);
-            mCycles += 1;
-            break;
-        }
-
-        /////////////////////////////////
-        // 16 bit load instructions
-
-        // Load 16 bit immediate value into register
-        case LOAD_BC_d16:
-        {
-            registers.shorts[BC] = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
-            registers.shorts[PC] += 2;
-            mCycles += 2;
-            break;
-        }
-        case LOAD_DE_d16:
-        {
-            registers.shorts[DE] = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
-            registers.shorts[PC] += 2;
-            mCycles += 2;
-            break;
-        }
-        case LOAD_HL_d16:
-        {
-            registers.shorts[HL] = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
-            registers.shorts[PC] += 2;
-            mCycles += 2;
-            break;
-        }
-
-        /////////////////////////
-        // Stack instructions
-        // which are part of 16 bit load instructions
-
-        // Load an immediate into Stack pointer
-        case LOAD_SP_d16:
-        {
-            registers.shorts[SP] = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
-            registers.shorts[PC] += 2;
-            mCycles += 2;
-            break;
-        }
-
-        // Load the stack pointer into the data pointed to by given address
-        case LOAD_a16_SP:
-        {
-            mmu->WriteToAddress(mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8), registers.shorts[SP]);
-            registers.shorts[PC] += 2;
-            mCycles += 4;
-            break;
-        }
-
-        // Load HL into the Stack pointer
-        case LOAD_SP_HL:
-        {
-            registers.shorts[SP] = registers.shorts[HL];
-            mCycles += 1;
-            break;
-        }
-
-        // Add immediate value to SP and store in HL
-        case LOAD_HL_SP_r8:
-        {
-            uint16_t sp = registers.shorts[SP];
-            uint16_t hl = registers.shorts[HL];
-            uint8_t r = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-
-            // check half carry flag:
-            if ((((sp & 0xf) + (r & 0xf)) & 0x10) == 0x10)
+            case JUMP_Z_a16:
             {
-                registers.bytes[F] |= HalfCarryFlag;
+                pcChanged = true;
+                // Jump to address in next 2 bytes if zero flag is set
+                if (registers.bytes[F] & ZeroFlag)
+                {
+                    uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
+                    registers.shorts[PC] = address;
+                    mCycles += 3;
+                }
+                else
+                {
+                    registers.shorts[PC] += 3;
+                    mCycles += 2;
+                }
+                break;
             }
-
-            // check full carry flag
-            hl = sp + (uint16_t)r;
-
-            if (hl & 0x0100)
+            case JUMP_NZ_a16:
             {
-                registers.bytes[F] |= CarryFlag;
+                pcChanged = true;
+                // Jump to address in next 2 bytes if zero flag is not set
+                if (!(registers.bytes[F] & ZeroFlag))
+                {
+                    uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
+                    registers.shorts[PC] = address;
+                    mCycles += 3;
+                }
+                else
+                {
+                    registers.shorts[PC] += 3;
+                    mCycles += 2;
+                }
+                break;
             }
-            registers.shorts[HL] = hl;
 
-            // reset 0 flag??
-            registers.bytes[F] &= ~ZeroFlag;
+            // Relative jumps
+            case JUMP_REL_r8:
+            {
+                pcChanged = true;
+                // Jump to address relative to current PC
+                // This is a signed 8 bit value
+                int8_t offset = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+                registers.shorts[PC] += offset + 2;
+                mCycles += 3;
+                break;
+            }
+            case JUMP_REL_C_r8:
+            {
+                pcChanged = true;
+                // Jump to address relative to current PC if carry flag is set
+                // This is a signed 8 bit value
+                if (registers.bytes[F] & CarryFlag)
+                {
+                    int8_t offset = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+                    registers.shorts[PC] += offset + 2;
+                    mCycles += 3;
+                }
+                else
+                {
+                    registers.shorts[PC] += 2;
+                    mCycles += 2;
+                }
+                break;
+            }
+            case JUMP_REL_NC_r8:
+            {
+                pcChanged = true;
+                // Jump to address relative to current PC if carry flag is not set
+                // This is a signed 8 bit value
+                if (!(registers.bytes[F] & CarryFlag))
+                {
+                    int8_t offset = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+                    registers.shorts[PC] += offset + 2;
+                    mCycles += 3;
+                }
+                else
+                {
+                    registers.shorts[PC] += 2;
+                    mCycles += 2;
+                }
+                break;
+            }
+            case JUMP_REL_Z_r8:
+            {
+                pcChanged = true;
+                // Jump to address relative to current PC if zero flag is set
+                // This is a signed 8 bit value
+                if (registers.bytes[F] & ZeroFlag)
+                {
+                    int8_t offset = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+                    registers.shorts[PC] += offset + 2;
+                    mCycles += 3;
+                }
+                else
+                {
+                    registers.shorts[PC] += 2;
+                    mCycles += 2;
+                }
+                break;
+            }
+            case JUMP_REL_NZ_r8:
+            {
+                pcChanged = true;
+                // Jump to address relative to current PC if zero flag is not set
+                // This is a signed 8 bit value
+                if (!(registers.bytes[F] & ZeroFlag))
+                {
+                    int8_t offset = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+                    registers.shorts[PC] += offset + 2;
+                    mCycles += 3;
+                }
+                else
+                {
+                    registers.shorts[PC] += 2;
+                    mCycles += 2;
+                }
+                break;
+            }
 
-            // Reset subtraction flag
-            registers.bytes[F] &= ~AddSubFlag;
+            // Calls and returns
+            case CALL_a16:
+            {
+                pcChanged = true;
+                // Push current PC onto stack and jump to address in next 2 bytes
+                //printf("Push current PC: %x. Jumping to %x\n",
+                //    registers.shorts[PC]+3,
+                //    mmu->ReadFromAddress(registers.shorts[PC] + 1));
+                mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 3));
+                mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 3) >> 8));
+                --registers.shorts[SP];
+                uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
+                registers.shorts[PC] = address;
+                mCycles += 6;
+                break;
+            }
+            case CALL_C_a16:
+            {
+                pcChanged = true;
+                // Push current PC onto stack and jump to address in next 2 bytes if carry flag is set
+                if (registers.bytes[F] & CarryFlag)
+                {
+                    mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 3));
+                    mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 3) >> 8));
+                    --registers.shorts[SP];
+                    uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
+                    registers.shorts[PC] = address;
+                    mCycles += 6;
+                }
+                else
+                {
+                    registers.shorts[PC] += 3;
+                    mCycles += 3;
+                }
+                break;
+            }
+            case CALL_NC_a16:
+            {
+                pcChanged = true;
+                // Push current PC onto stack and jump to address in next 2 bytes if carry flag is not set
+                if (!(registers.bytes[F] & CarryFlag))
+                {
+                    mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 3));
+                    mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 3) >> 8));
+                    --registers.shorts[SP];
+                    uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
+                    registers.shorts[PC] = address;
+                    mCycles += 6;
+                }
+                else
+                {
+                    registers.shorts[PC] += 3;
+                    mCycles += 3;
+                }
+                break;
+            }
+            case CALL_Z_a16:
+            {
+                pcChanged = true;
+                // Push current PC onto stack and jump to address in next 2 bytes if zero flag is set
+                if (registers.bytes[F] & ZeroFlag)
+                {
+                    mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 3));
+                    mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 3) >> 8));
+                    --registers.shorts[SP];
+                    uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
+                    registers.shorts[PC] = address;
+                    mCycles += 6;
+                }
+                else
+                {
+                    registers.shorts[PC] += 3;
+                    mCycles += 3;
+                }
+                break;
+            }
+            case CALL_NZ_a16:
+            {
+                pcChanged = true;
+                // Push current PC onto stack and jump to address in next 2 bytes if zero flag is not set
+                if (!(registers.bytes[F] & ZeroFlag))
+                {
+                    mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 3));
+                    mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 3) >> 8));
+                    --registers.shorts[SP];
+                    uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
+                    registers.shorts[PC] = address;
+                    mCycles += 6;
+                }
+                else
+                {
+                    registers.shorts[PC] += 3;
+                    mCycles += 3;
+                }
+                break;
+            }
+
+            case RETURN:
+            {
+                pcChanged = true;
+                // Pop 2 bytes from stack and jump to that address
+                uint16_t val = (mmu->ReadFromAddress(registers.shorts[SP]+1) << 8) | (mmu->ReadFromAddress(registers.shorts[SP] + 2));
+
+                //printf("Return to %x, %d\n", val, val);
+                registers.shorts[PC] = mmu->ReadFromAddress(++registers.shorts[SP]) << 8;
+                uint16_t topBits = mmu->ReadFromAddress(++registers.shorts[SP]);
+                registers.shorts[PC] |= topBits;
+                mCycles += 4;
+                break;
+            }
+            case RETURN_I:
+            {
+                pcChanged = true;
+                // Pop 2 bytes from stack and jump to that address
+                registers.shorts[PC] = mmu->ReadFromAddress(++registers.shorts[SP]) << 8;
+                registers.shorts[PC] |= mmu->ReadFromAddress(++registers.shorts[SP]);
+                // Enable interrupts
+                enableInterruptsNextCycle = true;
+                mCycles += 4;
+                break;
+            }
+            case RETURN_C:
+            {
+                
+                // Pop 2 bytes from stack and jump to that address if carry flag is set
+                if (registers.bytes[F] & CarryFlag)
+                {
+                    pcChanged = true;
+                    registers.shorts[PC] = mmu->ReadFromAddress(++registers.shorts[SP]) << 8;
+                    registers.shorts[PC] |= mmu->ReadFromAddress(++registers.shorts[SP]);
+                    mCycles += 5;
+                }
+                else
+                {
+                    mCycles += 2;
+                }
+                break;
+            }
+            case RETURN_NC:
+            {
+                
+                // Pop 2 bytes from stack and jump to that address if carry flag is not set
+                if (!(registers.bytes[F] & CarryFlag))
+                {
+                    pcChanged = true;
+                    registers.shorts[PC] = mmu->ReadFromAddress(++registers.shorts[SP]) << 8;
+                    registers.shorts[PC] |= mmu->ReadFromAddress(++registers.shorts[SP]);
+                    mCycles += 5;
+                }
+                else
+                {
+                    mCycles += 2;
+                }
+                break;
+            }
+            case RETURN_Z:
+            {
+                
+                // Pop 2 bytes from stack and jump to that address if zero flag is set
+                if (registers.bytes[F] & ZeroFlag)
+                {
+                    pcChanged = true;
+                    registers.shorts[PC] = mmu->ReadFromAddress(++registers.shorts[SP]) << 8;
+                    registers.shorts[PC] |= mmu->ReadFromAddress(++registers.shorts[SP]);
+                    mCycles += 5;
+                }
+                else
+                {
+                    mCycles += 2;
+                }
+                break;
+            }
+            case RETURN_NZ:
+            {
+                
+                // Pop 2 bytes from stack and jump to that address if zero flag is not set
+                if (!(registers.bytes[F] & ZeroFlag))
+                {
+                    pcChanged = true;
+                    registers.shorts[PC] = mmu->ReadFromAddress(++registers.shorts[SP]) << 8;
+                    registers.shorts[PC] |= mmu->ReadFromAddress(++registers.shorts[SP]);
+                    mCycles += 5;
+                }
+                else
+                {
+                    mCycles += 2;
+                }
+                break;
+            }
+
+            // RESET instructions
+            case RESET_00H:
+            {
+                pcChanged = true;
+                // Push current PC onto stack and jump to address 0x0000
+                mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
+                mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
+                --registers.shorts[SP];
+                registers.shorts[PC] = 0x0000;
+                mCycles += 4;
+                break;
+            }
+            case RESET_08H:
+            {
+                pcChanged = true;
+                // Push current PC onto stack and jump to address 0x0008
+                mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
+                mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
+                --registers.shorts[SP];
+                registers.shorts[PC] = 0x0008;
+                mCycles += 4;
+                break;
+            }
+            case RESET_10H:
+            {
+                pcChanged = true;
+                // Push current PC onto stack and jump to address 0x0010
+                mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
+                mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
+                --registers.shorts[SP];
+                registers.shorts[PC] = 0x0010;
+                mCycles += 4;
+                break;
+            }
+            case RESET_18H:
+            {
+                pcChanged = true;
+                // Push current PC onto stack and jump to address 0x0018
+                mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
+                mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
+                --registers.shorts[SP];
+                registers.shorts[PC] = 0x0018;
+                mCycles += 4;
+                break;
+            }
+            case RESET_20H:
+            {
+                pcChanged = true;
+                // Push current PC onto stack and jump to address 0x0020
+                mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
+                mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
+                --registers.shorts[SP];
+                registers.shorts[PC] = 0x0020;
+                mCycles += 4;
+                break;
+            }
+            case RESET_28H:
+            {
+                pcChanged = true;
+                // Push current PC onto stack and jump to address 0x0028
+                mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
+                mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
+                --registers.shorts[SP];
+                registers.shorts[PC] = 0x0028;
+                mCycles += 4;
+                break;
+            }
+            case RESET_30H:
+            {
+                pcChanged = true;
+                // Push current PC onto stack and jump to address 0x0030
+                mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
+                mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
+                --registers.shorts[SP];
+                registers.shorts[PC] = 0x0030;
+                mCycles += 4;
+                break;
+            }
+            case RESET_38H:
+            {
+                pcChanged = true;
+                // Push current PC onto stack and jump to address 0x0038
+                mmu->WriteToAddress(registers.shorts[SP], (uint8_t)(registers.shorts[PC] + 1));
+                mmu->WriteToAddress(--registers.shorts[SP], (uint8_t)((registers.shorts[PC] + 1) >> 8));
+                --registers.shorts[SP];
+                registers.shorts[PC] = 0x0038;
+                mCycles += 4;
+                break;
+            }
             
-            registers.shorts[PC] ++;
-            mCycles += 2;
-            break;
-        }
 
-        // Push 16 bit register onto stack
-        case PUSH_BC:
-        {
-            mmu->WriteToAddress(registers.shorts[SP], registers.bytes[B]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[C]);
-            registers.shorts[SP] --;
-            mCycles += 3;
-            break;
-        }
-        case PUSH_DE:
-        {
-            mmu->WriteToAddress(registers.shorts[SP], registers.bytes[D]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[E]);
-            registers.shorts[SP] --;
-            mCycles += 3;
-            break;
-        }
-        case PUSH_HL:
-        {
-            mmu->WriteToAddress(registers.shorts[SP], registers.bytes[H]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[L]);
-            registers.shorts[SP] --;
-            mCycles += 3;
-            break;
-        }
-        case PUSH_AF:
-        {
-            mmu->WriteToAddress(registers.shorts[SP], registers.bytes[A]);
-            mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[F]);
-            registers.shorts[SP] --;
-            mCycles += 3;
-            break;
-        }
-        
-        // Pop 16 bit register from stack
-        case POP_BC:
-        {
-            registers.bytes[C] = mmu->ReadFromAddress(++registers.shorts[SP]);
-            registers.bytes[B] = mmu->ReadFromAddress(++registers.shorts[SP]);
-            mCycles += 2;
-            break;
-        }
-        case POP_DE:
-        {
-            registers.bytes[E] = mmu->ReadFromAddress(++registers.shorts[SP]);
-            registers.bytes[D] = mmu->ReadFromAddress(++registers.shorts[SP]);
-            mCycles += 2;
-            break;
-        }
-        case POP_HL:
-        {
-            registers.bytes[L] = mmu->ReadFromAddress(++registers.shorts[SP]);
-            registers.bytes[H] = mmu->ReadFromAddress(++registers.shorts[SP]);
-            mCycles += 2;
-            break;
-        }
-        case POP_AF:
-        {
-            registers.bytes[F] = mmu->ReadFromAddress(++registers.shorts[SP]);
-            registers.bytes[A] = mmu->ReadFromAddress(++registers.shorts[SP]);
-            // This sets every flag to contents of F
-            // this should happen naturally
-            mCycles += 2;
-            break;
-        }
+            /////////////////////////////
+            // 8 bit arithmetic and logic
 
-        /////////////////////////////////
-        // Prefix'd instructions
-        case PREFIX:
-        {
-            // carry out instruction in following byte
-            registers.shorts[PC] ++;
-            instruction = mmu->ReadFromAddress(registers.shorts[PC]);
-            mCycles += ExecutePrefixInstruction(instruction);
-            break;
-        }
+            // Set carry flag instruction
+            case SCF:
+            {
+                // Set carry, clear N and H
+                registers.bytes[F] |= CarryFlag;
+                // reset subtraction flag
+                registers.bytes[F] &= ~AddSubFlag;
+                // reset half carry flag
+                registers.bytes[F] &= ~HalfCarryFlag;
+                mCycles += 1;
+                break;
+            }
 
-        // Jumps / calls
-        default:
-            printf("Bad opcode! Instruction: %x  at PC: %d\n", instruction, oldPC);
-            //std::cout << "Bad opcode!" << std::endl;
-            //exit(-1);
+            // Decimal Adjust Accumulator instruction
+            // This adjusts binary computation and flags to be BCD
+            case DAA:
+            {
+                mCycles += 1;
+                uint8_t a = registers.bytes[A];
+                if (!(registers.bytes[F] & AddSubFlag))
+                {  // after an addition, adjust if (half-)carry occurred or if result is out of bounds
+                    if ((registers.bytes[F] & CarryFlag) || a > 0x99)
+                    {
+                        a += 0x60;
+                        registers.bytes[F] |= CarryFlag;
+                    }
+                    if ((registers.bytes[F] & HalfCarryFlag) || (a & 0x0f) > 0x09)
+                    {
+                        a += 0x6;
+                    }
+                }
+                else
+                {  // after a subtraction, only adjust if (half-)carry occurred
+                    if (registers.bytes[F] & CarryFlag)
+                    {
+                        a -= 0x60;
+                    }
+                    if (registers.bytes[F] & HalfCarryFlag)
+                    {
+                        a -= 0x6;
+                    }
+                }
+                // these flags are always updated
+                // the usual z flag
+                if (a == 0)
+                {
+                    registers.bytes[F] |= ZeroFlag;
+                }
+                registers.bytes[F] &= ~HalfCarryFlag; // h flag is always cleared
+
+                // Put the updated value back into register A
+                registers.bytes[A] = a;
+
+                break;
+            }
+
+            // Complement Accumulator instruction
+            // This flips all bits in the accumulator
+            case CPL:
+            {
+                // Flip all bits in A
+                registers.bytes[A] = ~registers.bytes[A];
+                // Set subtraction flag
+                registers.bytes[F] |= AddSubFlag;
+                // Set half carry flag
+                registers.bytes[F] |= HalfCarryFlag;
+                mCycles += 1;
+                break;
+            }
+
+            // Complement Carry Flag instruction
+            // This flips the carry flag
+            case CCF:
+            {
+                // Flip carry flag
+                registers.bytes[F] ^= CarryFlag;
+                // Reset subtraction flag
+                registers.bytes[F] &= ~AddSubFlag;
+                // Reset half carry flag
+                registers.bytes[F] &= ~HalfCarryFlag;
+                mCycles += 1;
+                break;
+            }
+
+            case ADD_A_d8:
+            {
+                Add8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
+                registers.shorts[PC] ++;
+                mCycles += 1;
+                break;
+            }
+
+            // Subtract each register from A
+            case SUB_d8:
+            {
+                Sub8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
+                registers.shorts[PC] ++;
+                mCycles += 1;
+                break;
+            }
+
+            // Add each register with A and the carry flag
+            case ADC_d8:
+            {
+                AddC8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
+                registers.shorts[PC] ++;
+                mCycles += 1;
+                break;
+            }
+
+            // Subtract each register and the carry flag from A 
+            case SBC_d8:
+            {
+                SubC8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
+                registers.shorts[PC] ++;
+                mCycles += 1;
+                break;
+            }
+
+            // AND each register with A
+            case AND_d8:
+            {
+                And8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
+                registers.shorts[PC] ++;
+                mCycles += 1;
+                break;
+            }
+
+            // OR each register with A
+            case OR_d8:
+            {
+                Or8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
+                registers.shorts[PC] ++;
+                mCycles += 1;
+                break;
+            }
+
+            // XOR each register with A
+            case XOR_d8:
+            {
+                Xor8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
+                registers.shorts[PC] ++;
+                mCycles += 1;
+                break;
+            }
+
+            // Compare the register with A and store the result in the flags
+            case CP_d8:
+            {
+                Cp8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1));
+                registers.shorts[PC] ++;
+                mCycles += 1;
+                break;
+            }
+
+            // 8-bit rotate/shift instructions
+            case ROTATE_LEFT_A:
+            {
+                // Capture the MSB
+                uint8_t msb = (registers.bytes[A] & MostSigBit) >> 3;
+                // shift the A register left by one bit
+                registers.bytes[A] <<= 1;
+                // set the LSB to the value of the carry flag
+                registers.bytes[A] |= (registers.bytes[F] & CarryFlag) >> 4;
+                // Zero all flags
+                registers.bytes[F] &= ~AllFlags;
+                // Store the MSB in the carry flag
+                registers.bytes[F] |= msb;
+
+                break;
+            }
+            case ROTATE_LEFT_CA:
+            {
+                // Capture the MSB
+                uint8_t msb = (registers.bytes[A] & MostSigBit) >> 7;
+                // Shift the A register left by one bit
+                registers.bytes[A] <<= 1;
+                // Set the LSB to the value of the MSB
+                registers.bytes[A] |= msb;
+                // Zero all flags
+                registers.bytes[F] &= ~AllFlags;
+                // Store the MSB in the carry flag
+                registers.bytes[F] |= msb << 4;
+
+                break;
+            }
+            case ROTATE_RIGHT_A:
+            {
+                // Capture the LSB
+                uint8_t lsb = (registers.bytes[A] & LeastSigBit) >> 3;
+                // Shift the A register right by one bit
+                registers.bytes[A] >>= 1;
+                // Set the MSB to the value of the carry flag
+                registers.bytes[A] |= (registers.bytes[F] & CarryFlag) >> 4;
+                // Zero all flags
+                registers.bytes[F] &= ~AllFlags;
+                // Store the LSB in the carry flag
+                registers.bytes[F] |= lsb;
+
+                break;
+            }
+            case ROTATE_RIGHT_CA:
+            {
+                // Capture the LSB
+                uint8_t lsb = (registers.bytes[A] & LeastSigBit) >> 3;
+                // Shift the A register right by one bit
+                registers.bytes[A] >>= 1;
+                // Set the MSB to the value of the LSB
+                registers.bytes[A] |= lsb >> 4;
+                // Zero all flags
+                registers.bytes[F] &= ~AllFlags;
+                // Store the LSB in the carry flag
+                registers.bytes[F] |= lsb;
+
+                break;
+            }
+
+            /////////////////////////////
+            // 8 bit loading
+
+            // Load immediate value into each register
+            case LOAD_A_d8:
+            {
+                registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+                registers.shorts[PC] ++;
+                mCycles += 1;
+                break;
+            }
+            case LOAD_B_d8:
+            {
+                registers.bytes[B] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+                registers.shorts[PC] ++;
+                mCycles += 1;
+                break;
+            }
+            case LOAD_C_d8:
+            {
+                registers.bytes[C] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+                registers.shorts[PC] ++;
+                mCycles += 1;
+                break;
+            }
+            case LOAD_D_d8:
+            {
+                registers.bytes[D] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+                registers.shorts[PC] ++;
+                mCycles += 1;
+                break;
+            }
+            case LOAD_E_d8:
+            {
+                registers.bytes[E] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+                registers.shorts[PC] ++;
+                mCycles += 1;
+                break;
+            }
+            case LOAD_H_d8:
+            {
+                registers.bytes[H] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+                registers.shorts[PC] ++;
+                mCycles += 1;
+                break;
+            }
+            case LOAD_L_d8:
+            {
+                registers.bytes[L] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+                registers.shorts[PC] ++;
+                mCycles += 1;
+                break;
+            }
+            case LOAD_HL_d8:
+            {
+                mmu->WriteToAddress(registers.shorts[HL], mmu->ReadFromAddress(registers.shorts[PC] + 1));
+                registers.shorts[PC] ++;
+                mCycles += 2;
+                break;
+            }
+
+            
+
+            // 8 bit special load instructions
+
+            // load A into BC or DE, and vice versa
+            case LOAD_A_BC:
+            {
+                registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[BC]);
+                mCycles += 1;
+                break;
+            }
+            case LOAD_A_DE:
+            {
+                registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[DE]);
+                mCycles += 1;
+                break;
+            }
+            case LOAD_BC_A:
+            {
+                mmu->WriteToAddress(registers.shorts[BC], registers.bytes[A]);
+                mCycles += 1;
+                break;
+            }
+            case LOAD_DE_A:
+            {
+                mmu->WriteToAddress(registers.shorts[DE], registers.bytes[A]);
+                mCycles += 1;
+                break;
+            }
+
+            // Load and store with offset address
+            case LOAD_Cv_A:
+            {
+                mmu->WriteToAddress(MMU::ioRegistersOffset + registers.bytes[C], registers.bytes[A]);
+                mCycles += 1;
+                break;
+            }
+            case LOAD_A_Cv:
+            {
+                registers.bytes[A] = mmu->ReadFromAddress(MMU::ioRegistersOffset + registers.bytes[C]);
+                mCycles += 1;
+                break;
+            }
+
+            // Load and store to absolute address
+            case LOAD_a16_A:
+            {
+                uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
+                registers.shorts[PC] += 2;
+                mmu->WriteToAddress(address, registers.bytes[A]);
+                mCycles += 3;
+                break;
+            }
+            case LOAD_A_a16:
+            {
+                uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
+                registers.shorts[PC] += 2;
+                registers.bytes[A] = mmu->ReadFromAddress(address);
+                mCycles += 3;
+                break;
+            }
+
+            // Load and store from HL pointer to A, incrementing or decrementing the pointer after the fact
+            case LOAD_A_HLplus:
+            {
+                registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[HL]);
+                registers.shorts[HL] ++;
+                mCycles += 1;
+                break;
+            }
+            case LOAD_A_HLminus:
+            {
+                registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[HL]);
+                registers.shorts[HL] --;
+                mCycles += 1;
+                break;
+            }
+            case LOAD_HLplus_A:
+            {
+                mmu->WriteToAddress(registers.shorts[HL], registers.bytes[A]);
+                registers.shorts[HL] ++;
+                mCycles += 1;
+                break;
+            }
+            case LOAD_HLminus_A:
+            {
+                mmu->WriteToAddress(registers.shorts[HL], registers.bytes[A]);
+                registers.shorts[HL] --;
+                mCycles += 1;
+                break;
+            }
+
+            // Load and store from absolute 8 bit address offset by 0xFF00
+            case LOAD_H_a8_A:
+            {
+                uint8_t a8 = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+                mmu->WriteToAddress(MMU::ioRegistersOffset + a8, registers.bytes[A]);
+                registers.shorts[PC] ++;
+                mCycles += 2;
+                break;
+            }
+            case LOAD_H_A_a8:
+            {
+                uint8_t a8 = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+                registers.bytes[A] = mmu->ReadFromAddress(MMU::ioRegistersOffset + a8);
+                registers.shorts[PC] ++;
+                mCycles += 2;
+                break;
+            }
+
+            /////////////////////////////////
+            // 16 bit arithmetic instructions
+            case INC_BC:
+            {
+                registers.shorts[BC] ++;
+                mCycles += 1;
+                break;
+            }
+            case INC_DE:
+            {
+                registers.shorts[DE] ++;
+                mCycles += 1;
+                break;
+            }
+            case INC_HL:
+            {
+                registers.shorts[HL] ++;
+                mCycles += 1;
+                break;
+            }
+            case INC_SP:
+            {
+                registers.shorts[SP] ++;
+                mCycles += 1;
+                break;
+            }
+
+            case DEC_BC:
+            {
+                registers.shorts[BC] --;
+                mCycles += 1;
+                break;
+            }
+            case DEC_DE:
+            {
+                registers.shorts[DE] --;
+                mCycles += 1;
+                break;
+            }
+            case DEC_HL:
+            {
+                registers.shorts[HL] --;
+                mCycles += 1;
+                break;
+            }
+            case DEC_SP:
+            {
+                registers.shorts[SP] --;
+                mCycles += 1;
+                break;
+            }
+
+            case ADD_HL_BC:
+            {
+                Add16(registers.shorts[HL], registers.shorts[BC], registers.shorts[HL]);
+                mCycles += 1;
+                break;
+            }
+            case ADD_HL_DE:
+            {
+                Add16(registers.shorts[HL], registers.shorts[DE], registers.shorts[HL]);
+                mCycles += 1;
+                break;
+            }
+            case ADD_HL_HL:
+            {
+                Add16(registers.shorts[HL], registers.shorts[HL], registers.shorts[HL]);
+                mCycles += 1;
+                break;
+            }
+            case ADD_HL_SP:
+            {
+                Add16(registers.shorts[HL], registers.shorts[SP], registers.shorts[HL]);
+                mCycles += 1;
+                break;
+            }
+
+            /////////////////////////////////
+            // 16 bit load instructions
+
+            // Load 16 bit immediate value into register
+            case LOAD_BC_d16:
+            {
+                registers.shorts[BC] = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
+                registers.shorts[PC] += 2;
+                mCycles += 2;
+                break;
+            }
+            case LOAD_DE_d16:
+            {
+                registers.shorts[DE] = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
+                registers.shorts[PC] += 2;
+                mCycles += 2;
+                break;
+            }
+            case LOAD_HL_d16:
+            {
+                registers.shorts[HL] = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
+                registers.shorts[PC] += 2;
+                mCycles += 2;
+                break;
+            }
+
+            /////////////////////////
+            // Stack instructions
+            // which are part of 16 bit load instructions
+
+            // Load an immediate into Stack pointer
+            case LOAD_SP_d16:
+            {
+                registers.shorts[SP] = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
+                registers.shorts[PC] += 2;
+                mCycles += 2;
+                break;
+            }
+
+            // Load the stack pointer into the data pointed to by given address
+            case LOAD_a16_SP:
+            {
+                mmu->WriteToAddress(mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8), registers.shorts[SP]);
+                registers.shorts[PC] += 2;
+                mCycles += 4;
+                break;
+            }
+
+            // Load HL into the Stack pointer
+            case LOAD_SP_HL:
+            {
+                registers.shorts[SP] = registers.shorts[HL];
+                mCycles += 1;
+                break;
+            }
+
+            // Add immediate value to SP and store in HL
+            case LOAD_HL_SP_r8:
+            {
+                uint16_t sp = registers.shorts[SP];
+                uint16_t hl = registers.shorts[HL];
+                uint8_t r = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+
+                // check half carry flag:
+                if ((((sp & 0xf) + (r & 0xf)) & 0x10) == 0x10)
+                {
+                    registers.bytes[F] |= HalfCarryFlag;
+                }
+
+                // check full carry flag
+                hl = sp + (uint16_t)r;
+
+                if (hl & 0x0100)
+                {
+                    registers.bytes[F] |= CarryFlag;
+                }
+                registers.shorts[HL] = hl;
+
+                // reset 0 flag??
+                registers.bytes[F] &= ~ZeroFlag;
+
+                // Reset subtraction flag
+                registers.bytes[F] &= ~AddSubFlag;
+                
+                registers.shorts[PC] ++;
+                mCycles += 2;
+                break;
+            }
+
+            // Push 16 bit register onto stack
+            case PUSH_BC:
+            {
+                mmu->WriteToAddress(registers.shorts[SP], registers.bytes[B]);
+                mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[C]);
+                registers.shorts[SP] --;
+                mCycles += 3;
+                break;
+            }
+            case PUSH_DE:
+            {
+                mmu->WriteToAddress(registers.shorts[SP], registers.bytes[D]);
+                mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[E]);
+                registers.shorts[SP] --;
+                mCycles += 3;
+                break;
+            }
+            case PUSH_HL:
+            {
+                mmu->WriteToAddress(registers.shorts[SP], registers.bytes[H]);
+                mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[L]);
+                registers.shorts[SP] --;
+                mCycles += 3;
+                break;
+            }
+            case PUSH_AF:
+            {
+                mmu->WriteToAddress(registers.shorts[SP], registers.bytes[A]);
+                mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[F]);
+                registers.shorts[SP] --;
+                mCycles += 3;
+                break;
+            }
+            
+            // Pop 16 bit register from stack
+            case POP_BC:
+            {
+                registers.bytes[C] = mmu->ReadFromAddress(++registers.shorts[SP]);
+                registers.bytes[B] = mmu->ReadFromAddress(++registers.shorts[SP]);
+                mCycles += 2;
+                break;
+            }
+            case POP_DE:
+            {
+                registers.bytes[E] = mmu->ReadFromAddress(++registers.shorts[SP]);
+                registers.bytes[D] = mmu->ReadFromAddress(++registers.shorts[SP]);
+                mCycles += 2;
+                break;
+            }
+            case POP_HL:
+            {
+                registers.bytes[L] = mmu->ReadFromAddress(++registers.shorts[SP]);
+                registers.bytes[H] = mmu->ReadFromAddress(++registers.shorts[SP]);
+                mCycles += 2;
+                break;
+            }
+            case POP_AF:
+            {
+                registers.bytes[F] = mmu->ReadFromAddress(++registers.shorts[SP]);
+                registers.bytes[A] = mmu->ReadFromAddress(++registers.shorts[SP]);
+                // This sets every flag to contents of F
+                // this should happen naturally
+                mCycles += 2;
+                break;
+            }
+
+            /////////////////////////////////
+            // Prefix'd instructions
+            case PREFIX:
+            {
+                // carry out instruction in following byte
+                registers.shorts[PC] ++;
+                instruction = mmu->ReadFromAddress(registers.shorts[PC]);
+                mCycles += ExecutePrefixInstruction(instruction);
+                break;
+            }
+
+            // Jumps / calls
+            default:
+                printf("Bad opcode! Instruction: %x  at PC: %d\n", instruction, oldPC);
+                //std::cout << "Bad opcode!" << std::endl;
+                //exit(-1);
+        }
     }
 
 #ifdef DEBUG_OUT
@@ -2386,8 +1999,8 @@ int CPU::ExecuteNextInstruction()
 #endif
 
     uint8_t programCounter = registers.shorts[PC];
-    if (programCounter == 0x40
-        || programCounter == 0x55 || programCounter == 0x5f || programCounter == 0xe0)
+    if (programCounter >= 0x0c && programCounter <= 0x1c)
+     //   || programCounter == 0x55 || programCounter == 0x5f || programCounter == 0xe0)
     {
         programCounter ++;
     }

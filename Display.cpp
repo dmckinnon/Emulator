@@ -11,7 +11,8 @@ Display::Display(
     std::shared_ptr<ST7789> lcd,
     std::function<void()> setVBlankInterrupt,
     std::function<void()> setLCDStatInterrupt,
-    std::function<void(uint8_t)> setJoypadInterrupt) :
+    std::function<void(uint8_t)> setJoypadInterrupt,
+    bool useDebugger) :
     mmu(memMgmntUnit),
     lcd(lcd),
     SetVBlankInterrupt(setVBlankInterrupt),
@@ -30,7 +31,8 @@ Display::Display(
     lcd->ClearScreen(true);
 #else
     frameBuffer = cv::Mat(cv::Size(GAMEBOY_HEIGHT, GAMEBOY_WIDTH), CV_8UC1, cv::Scalar(0));
-    debugger = std::make_shared<Debugger>(mmu);
+    if (useDebugger)
+        debugger = std::make_shared<Debugger>(mmu);
 #endif
 }
 
