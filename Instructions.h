@@ -3,6 +3,9 @@
 // Since there are so few registers, we just enumerate all possibilities
 // instead of trying to pull out the opcode and then the arguments
 
+
+// new plan, using these conditions to make it a log decision tree instead of just considering each every time
+// https://gb-archive.github.io/salvage/decoding_gbz80_opcodes/Decoding%20Gamboy%20Z80%20Opcodes.html#cb
 #define LOAD_PREFIX 0x01
 #define ARITH_PREFIX 0x02
 #define STACK_PREFIX 0x03
@@ -10,6 +13,9 @@
 #define REG_BITS 0x07
 #define PREFIX_SHIFT 6
 #define INC_DEC_CONDITION(x, z) (x == 0 && (z > 3 && z < 6))
+#define LOAD_IMMEDIATE_CONDITION(x, z) (x == 0 && z == 6)
+#define LOAD_IMMEDIATE_ADD_CONDITION(x, z) (x == 0 && z == 1)
+#define INDIRECT_LOAD_CONDITION(x, z) (x == 0 && z == 2)
 #define TWO_BYTE_INC_DEC 0x03
 #define INC 0x04
 #define DEC 0x05

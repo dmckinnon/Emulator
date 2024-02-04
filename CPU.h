@@ -63,6 +63,7 @@ private:
     // we explicitly call out that one "register" is a HL pointer
     uint8_t HL_pointer = 0xff;
     uint8_t regMap[8] = {B, C, D, E, H, L, HL_pointer, A};
+    uint8_t doubleRegMap[4] = {BC, DE, HL, SP};
 
     union Registers
     {

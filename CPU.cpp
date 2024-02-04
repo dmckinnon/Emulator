@@ -781,22 +781,107 @@ int CPU::ExecuteNextInstruction()
         }
 
     }
+    // LD r[y], n
+    else if (LOAD_IMMEDIATE_CONDITION(prefix, arg2))
+    {
+        uint8_t reg = regMap[arg1];
+        if (reg != HL_pointer)
+        {
+            registers.bytes[reg] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+            mCycles += 1;
+        }
+        else
+        {
+            mmu->WriteToAddress(registers.shorts[HL], mmu->ReadFromAddress(registers.shorts[PC] + 1));
+            mCycles += 2;
+        }
+        registers.shorts[PC] ++;
+    }
+    // Indirect loading
+    else if (INDIRECT_LOAD_CONDITION(prefix, arg2))
+    {
+        uint8_t index = arg1 >> 1;
+        if (arg1 % 2 == 0)
+        {
+            // Load A to address in 16 bit reg
+            switch (index):
+            {
+                case 0:
+                    mmu->WriteToAddress(registers.shorts[BC], registers.bytes[A]);
+                    break;
+                case 1:
+                    mmu->WriteToAddress(registers.shorts[DE], registers.bytes[A]);
+                    break;
+                case 2:
+                    mmu->WriteToAddress(registers.shorts[HL], registers.bytes[A]);
+                    registers.shorts[HL] ++;
+                    break;
+                case 3:
+                    mmu->WriteToAddress(registers.shorts[HL], registers.bytes[A]);
+                    registers.shorts[HL] --;
+                    break;
+            }
+        }
+        else
+        {
+            // Load value at 16 bit address in reg to A
+            switch (index):
+            {
+                case 0:
+                    registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[BC]);
+                    break;
+                case 1:
+                    registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[DE]);
+                    break;
+                case 2:
+                    registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[HL]);
+                    registers.shorts[HL] ++;
+                    break;
+                case 3:
+                    registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[HL]);
+                    registers.shorts[HL] --;
+                    break;
+            }
+            
+        }
+        mCycles += 1;
+    }
+    // 16 bit load immediate and add
+    else if (LOAD_IMMEDIATE_ADD_CONDITION(prefix, arg2))
+    {
+        uint8_t reg = doubleRegMap[arg2 >> 1];
+        if (arg1 % 2 == 0)
+        {
+            // 16 bit load immediate
+            registers.shorts[reg] = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
+            registers.shorts[PC] += 2;
+            mCycles += 2;
+        }
+        else
+        {
+            // 16 bit add
+            Add16(registers.shorts[HL], registers.shorts[reg], registers.shorts[HL]);
+            mCycles += 1;
+        }
+    }
     // INC and DEC
     else if (INC_DEC_CONDITION(prefix, arg2))
     {
         if (arg2 == TWO_BYTE_INC_DEC) 
         {
-            // get 16 bit registerr from p
+            // get 16 bit register from p
             // inc
+            uint8_t reg  = doubleRegMap[arg2 >> 1];
             if (arg1 % 2 == 0)
             {
-
+                registers.shorts[reg] ++;
             }
             // dec
             else
             {
-
+                registers.shorts[reg] --;
             }
+            mCycles += 1;
         }
         else
         {
@@ -1563,96 +1648,12 @@ int CPU::ExecuteNextInstruction()
                 break;
             }
 
-            /////////////////////////////
-            // 8 bit loading
-
-            // Load immediate value into each register
-            case LOAD_A_d8:
-            {
-                registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-                registers.shorts[PC] ++;
-                mCycles += 1;
-                break;
-            }
-            case LOAD_B_d8:
-            {
-                registers.bytes[B] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-                registers.shorts[PC] ++;
-                mCycles += 1;
-                break;
-            }
-            case LOAD_C_d8:
-            {
-                registers.bytes[C] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-                registers.shorts[PC] ++;
-                mCycles += 1;
-                break;
-            }
-            case LOAD_D_d8:
-            {
-                registers.bytes[D] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-                registers.shorts[PC] ++;
-                mCycles += 1;
-                break;
-            }
-            case LOAD_E_d8:
-            {
-                registers.bytes[E] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-                registers.shorts[PC] ++;
-                mCycles += 1;
-                break;
-            }
-            case LOAD_H_d8:
-            {
-                registers.bytes[H] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-                registers.shorts[PC] ++;
-                mCycles += 1;
-                break;
-            }
-            case LOAD_L_d8:
-            {
-                registers.bytes[L] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-                registers.shorts[PC] ++;
-                mCycles += 1;
-                break;
-            }
-            case LOAD_HL_d8:
-            {
-                mmu->WriteToAddress(registers.shorts[HL], mmu->ReadFromAddress(registers.shorts[PC] + 1));
-                registers.shorts[PC] ++;
-                mCycles += 2;
-                break;
-            }
-
+            
             
 
             // 8 bit special load instructions
 
             // load A into BC or DE, and vice versa
-            case LOAD_A_BC:
-            {
-                registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[BC]);
-                mCycles += 1;
-                break;
-            }
-            case LOAD_A_DE:
-            {
-                registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[DE]);
-                mCycles += 1;
-                break;
-            }
-            case LOAD_BC_A:
-            {
-                mmu->WriteToAddress(registers.shorts[BC], registers.bytes[A]);
-                mCycles += 1;
-                break;
-            }
-            case LOAD_DE_A:
-            {
-                mmu->WriteToAddress(registers.shorts[DE], registers.bytes[A]);
-                mCycles += 1;
-                break;
-            }
 
             // Load and store with offset address
             case LOAD_Cv_A:
@@ -1687,34 +1688,7 @@ int CPU::ExecuteNextInstruction()
             }
 
             // Load and store from HL pointer to A, incrementing or decrementing the pointer after the fact
-            case LOAD_A_HLplus:
-            {
-                registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[HL]);
-                registers.shorts[HL] ++;
-                mCycles += 1;
-                break;
-            }
-            case LOAD_A_HLminus:
-            {
-                registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[HL]);
-                registers.shorts[HL] --;
-                mCycles += 1;
-                break;
-            }
-            case LOAD_HLplus_A:
-            {
-                mmu->WriteToAddress(registers.shorts[HL], registers.bytes[A]);
-                registers.shorts[HL] ++;
-                mCycles += 1;
-                break;
-            }
-            case LOAD_HLminus_A:
-            {
-                mmu->WriteToAddress(registers.shorts[HL], registers.bytes[A]);
-                registers.shorts[HL] --;
-                mCycles += 1;
-                break;
-            }
+
 
             // Load and store from absolute 8 bit address offset by 0xFF00
             case LOAD_H_a8_A:
@@ -1734,121 +1708,12 @@ int CPU::ExecuteNextInstruction()
                 break;
             }
 
-            /////////////////////////////////
-            // 16 bit arithmetic instructions
-            case INC_BC:
-            {
-                registers.shorts[BC] ++;
-                mCycles += 1;
-                break;
-            }
-            case INC_DE:
-            {
-                registers.shorts[DE] ++;
-                mCycles += 1;
-                break;
-            }
-            case INC_HL:
-            {
-                registers.shorts[HL] ++;
-                mCycles += 1;
-                break;
-            }
-            case INC_SP:
-            {
-                registers.shorts[SP] ++;
-                mCycles += 1;
-                break;
-            }
 
-            case DEC_BC:
-            {
-                registers.shorts[BC] --;
-                mCycles += 1;
-                break;
-            }
-            case DEC_DE:
-            {
-                registers.shorts[DE] --;
-                mCycles += 1;
-                break;
-            }
-            case DEC_HL:
-            {
-                registers.shorts[HL] --;
-                mCycles += 1;
-                break;
-            }
-            case DEC_SP:
-            {
-                registers.shorts[SP] --;
-                mCycles += 1;
-                break;
-            }
-
-            case ADD_HL_BC:
-            {
-                Add16(registers.shorts[HL], registers.shorts[BC], registers.shorts[HL]);
-                mCycles += 1;
-                break;
-            }
-            case ADD_HL_DE:
-            {
-                Add16(registers.shorts[HL], registers.shorts[DE], registers.shorts[HL]);
-                mCycles += 1;
-                break;
-            }
-            case ADD_HL_HL:
-            {
-                Add16(registers.shorts[HL], registers.shorts[HL], registers.shorts[HL]);
-                mCycles += 1;
-                break;
-            }
-            case ADD_HL_SP:
-            {
-                Add16(registers.shorts[HL], registers.shorts[SP], registers.shorts[HL]);
-                mCycles += 1;
-                break;
-            }
-
-            /////////////////////////////////
-            // 16 bit load instructions
-
-            // Load 16 bit immediate value into register
-            case LOAD_BC_d16:
-            {
-                registers.shorts[BC] = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
-                registers.shorts[PC] += 2;
-                mCycles += 2;
-                break;
-            }
-            case LOAD_DE_d16:
-            {
-                registers.shorts[DE] = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
-                registers.shorts[PC] += 2;
-                mCycles += 2;
-                break;
-            }
-            case LOAD_HL_d16:
-            {
-                registers.shorts[HL] = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
-                registers.shorts[PC] += 2;
-                mCycles += 2;
-                break;
-            }
 
             /////////////////////////
             // Stack instructions
             // which are part of 16 bit load instructions
 
-            // Load an immediate into Stack pointer
-            case LOAD_SP_d16:
-            {
-                registers.shorts[SP] = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
-                registers.shorts[PC] += 2;
-                mCycles += 2;
-                break;
-            }
 
             // Load the stack pointer into the data pointed to by given address
             case LOAD_a16_SP:
