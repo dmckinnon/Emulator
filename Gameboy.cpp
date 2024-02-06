@@ -38,7 +38,8 @@ Gameboy::Gameboy(
         useDebugger)
 {
     cpu.SetDisplaySignalFunc([this](){
-        this->display.ClockSignalForScanline();
+        //this->display.ClockSignalForScanline();
+        this->display.MaybeDrawOneScanLine();
     });
 
 #ifdef RP2040

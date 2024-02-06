@@ -5,7 +5,7 @@
 #include <string.h>
 #include <thread>
 
-#define DEBUG_OUT
+//#define DEBUG_OUT
 
 //#define QUIT_AFTER_BOOT
 
@@ -97,6 +97,14 @@ void CPU::ExecuteCycles(int numMCycles)
     if (clockDivider % 456 == 0)
     {
         SignalDisplayForNextScanline();
+
+        // make CPU wait upon the display
+        // That is, CPU can only continue once the display has considered drawing
+        // this scan line
+        // Can do this with locks etc, or just have the entire draw call here
+
+        // Now this function should block this thread on drawing a whole scan line if appropriate
+        
     }
 
 

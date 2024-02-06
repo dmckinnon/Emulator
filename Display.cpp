@@ -101,6 +101,53 @@ void Display::ClockSignalForScanline()
 #endif
 }
 
+void Display::MaybeDrawOneScanLine()
+{
+    UpdateLCDStatus();
+
+    if (!IsLCDEnabled())
+    {
+        // if things are not all blank, draw all blank, then just wait until next period
+        return;
+    }
+
+    // Consider the next scanline
+    uint8_t currentScanLine = mmu->ReadFromAddress(MMU::ScanLineCounterAddress);
+    currentScanLine ++;
+    mmu->WriteToScanlineCounter_Allowed(currentScanLine);
+
+    // confirm that currentScanline is valid
+    if (currentScanLine < 0 || currentScanLine > 160)
+    {
+        return;
+    }
+
+    if (currentScanLine > MaxScanlines)
+    {
+        // reset scan line counter
+        mmu->WriteToAddress(MMU::ScanLineCounterAddress, (uint8_t)0);
+    }
+    else if (currentScanLine < VisibleScanlines)
+    {
+
+        // since we're drawing to the frame, take a lock on the frame buffer
+        displayMutex.lock();
+
+        // draw current scan line
+        DrawScanLine(currentScanLine);
+
+        displayMutex.unlock();
+    }
+    else
+    {   // Are we in vblank? If so, set explicit VBLANK interrupt
+        SetVBlankInterrupt();
+        // during vblank, blit image to screen
+        
+    }
+
+    drawNextScanline = false;
+}
+
 void Display::FrameThreadProc()
 {  
     displaying = true;
@@ -111,7 +158,16 @@ void Display::FrameThreadProc()
         // use a keypress to break out of here
         char key = (char) cv::waitKey(30);   // explicit cast
         if (key == 27) break; 
+
+        displayMutex.lock();
+        cv::imshow("GameBoy", frameBuffer);
+        displayMutex.unlock();
 #endif
+    }
+
+    displaying = false;
+}
+/*
 
         UpdateLCDStatus();
 
@@ -199,6 +255,7 @@ void Display::FrameThreadProc()
 
     displaying = false;
 }
+*/
 
 void Display::UpdateLCDStatus()
 {

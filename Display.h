@@ -106,6 +106,8 @@ public:
 
     bool IsLCDEnabled();
 
+    void MaybeDrawOneScanLine();
+
     void StartDisplay();
     void StopDisplay();
 
@@ -141,6 +143,8 @@ private:
     // display threada
     std::thread windowThread;
     std::thread frameUpdateThread;
+
+    std::mutex displayMutex;
 
     // mutex and condition variable for clock signaling
     std::mutex clockSignalMutex;
