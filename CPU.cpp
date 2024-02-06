@@ -12,6 +12,8 @@
 #define CLOCKSPEED 4194304 
 
 using namespace std;
+#include <chrono>
+using namespace std::chrono;
 
 CPU::CPU()
 {
@@ -217,6 +219,7 @@ void CPU::ExecuteCode()
     
     while (true)
     {
+            auto start = high_resolution_clock::now();
         // If PC has reached 0x100, then cartridge is valid;
         // unmap system ROM and use cartridge ROM from now on.
         // TODO: only do this once
@@ -270,6 +273,9 @@ void CPU::ExecuteCode()
             interruptsAreEnabled = false;
             disableInterruptsNextCycle = false;
         }
+        auto stop = high_resolution_clock::now();
+        auto duration = duration_cast<microseconds>(stop - start);
+        //cout << "time of execution: " << duration.count() << endl;
     }
 
     // end execution
@@ -804,7 +810,7 @@ int CPU::ExecuteNextInstruction()
         if (arg1 % 2 == 0)
         {
             // Load A to address in 16 bit reg
-            switch (index):
+            switch (index)
             {
                 case 0:
                     mmu->WriteToAddress(registers.shorts[BC], registers.bytes[A]);
@@ -825,7 +831,7 @@ int CPU::ExecuteNextInstruction()
         else
         {
             // Load value at 16 bit address in reg to A
-            switch (index):
+            switch (index)
             {
                 case 0:
                     registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[BC]);
@@ -849,7 +855,7 @@ int CPU::ExecuteNextInstruction()
     // 16 bit load immediate and add
     else if (LOAD_IMMEDIATE_ADD_CONDITION(prefix, arg2))
     {
-        uint8_t reg = doubleRegMap[arg2 >> 1];
+        uint8_t reg = doubleRegMap[arg1 >> 1];
         if (arg1 % 2 == 0)
         {
             // 16 bit load immediate
@@ -871,7 +877,7 @@ int CPU::ExecuteNextInstruction()
         {
             // get 16 bit register from p
             // inc
-            uint8_t reg  = doubleRegMap[arg2 >> 1];
+            uint8_t reg  = doubleRegMap[arg1 >> 1];
             if (arg1 % 2 == 0)
             {
                 registers.shorts[reg] ++;
@@ -1851,16 +1857,17 @@ int CPU::ExecuteNextInstruction()
     }
 
 #ifdef DEBUG_OUT
-    printf("instruction: %x  at PC: %d  %x\n", instruction, oldPC, oldPC);
+    //printf("instruction: %x  at PC: %d  %x\n", instruction, oldPC, oldPC);
 
     // Print all registers for debug
-     printf("A: %x\tB: %x\tC: %x\tD: %x\nE: %x\tH: %x\tL: %x\tF: %x\n",
+    /*printf("A: %x\tB: %x\tC: %x\tD: %x\nE: %x\tH: %x\tL: %x\tF: %x\n",
             registers.bytes[A], registers.bytes[B], registers.bytes[C], registers.bytes[D], 
             registers.bytes[E], registers.bytes[H], registers.bytes[L], 
             registers.bytes[F]);
     printf("AF: %x\tBC: %x\tDE: %x\tHL: %x\nSP: %x\tPC: %x\n",
             registers.shorts[AF], registers.shorts[BC], registers.shorts[DE], registers.shorts[HL], 
-            registers.shorts[SP], registers.shorts[PC]);
+            registers.shorts[SP], registers.shorts[PC]);*/
+    
 #endif
 
     uint8_t programCounter = registers.shorts[PC];
@@ -1969,7 +1976,7 @@ int CPU::ExecutePrefixInstruction(uint8_t instruction)
     return mCycles; 
 }
 
-uint8_t CPU::GetRegisterFromPrefixIndex(uint8_t reg)
+inline uint8_t CPU::GetRegisterFromPrefixIndex(uint8_t reg)
 {
     switch (reg)
     {

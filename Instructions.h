@@ -12,7 +12,7 @@
 #define ALU_CODE_BITS 0x38
 #define REG_BITS 0x07
 #define PREFIX_SHIFT 6
-#define INC_DEC_CONDITION(x, z) (x == 0 && (z > 3 && z < 6))
+#define INC_DEC_CONDITION(x, z) (x == 0 && (z > 2 && z < 6))
 #define LOAD_IMMEDIATE_CONDITION(x, z) (x == 0 && z == 6)
 #define LOAD_IMMEDIATE_ADD_CONDITION(x, z) (x == 0 && z == 1)
 #define INDIRECT_LOAD_CONDITION(x, z) (x == 0 && z == 2)
