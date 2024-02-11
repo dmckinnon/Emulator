@@ -20,6 +20,18 @@
 #define INC 0x04
 #define DEC 0x05
 
+// According to one set of docs, write the MSB then the LSB of return address
+#define PUSH_RET_ADDR_TO_STACK(pcAddr) (\
+                            uint8_t returnAddressLSB = (uint8_t)(pcAddr + 3);\
+                            uint8_t returnAddressMSB = (uint8_t)(pcAddr >> 8);\
+                            mmu->WriteToAddress(--registers.shorts[SP], returnAddressMSB);\
+                            mmu->WriteToAddress(--registers.shorts[SP], returnAddressLSB);)
+
+// LSB, then MSB. Post increment
+#define POP_PC_FROM_STACK (\
+                        registers.shorts[PC] = mmu->ReadFromAddress(registers.shorts[SP]++);\
+                        registers.shorts[PC] |= mmu->ReadFromAddress(registers.shorts[SP]++) << 8;)
+
 #define ADD 0
 #define ADC 1
 #define SUB 2

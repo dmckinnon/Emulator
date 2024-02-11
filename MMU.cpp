@@ -145,8 +145,6 @@ void MMU::LoadRomToMemory(std::shared_ptr<Rom> rom)
 
 void MMU::UnmapSystemRom()
 {
-    //if (allRam != nullptr && useSystemRom)
-    //    delete allRam;
     useSystemRom = false;
 }
 
