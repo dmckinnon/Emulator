@@ -17,6 +17,11 @@ public:
         SignalDisplayForNextScanline = signalDisplayForNextScanline;
     }
 
+    void SetDisplayUpdateFunc(std::function<void()> signalDisplayToUpdate)
+    {
+        SignalDisplayToUpdate = signalDisplayToUpdate;
+    }
+
     bool Executing() 
     {
         return executing;
@@ -86,6 +91,7 @@ private:
     // Each instruction is a multiple of 4 clock ticks == 1 m-cycle. 
     uint16_t clockCounter;
     uint16_t clockDivider;
+    uint32_t cycles = 0;
 
     std::shared_ptr<MMU> mmu;
 
@@ -99,6 +105,8 @@ private:
     void InitialiseRegisters();
 
     std::function<void()> SignalDisplayForNextScanline;
+
+    std::function<void()> SignalDisplayToUpdate;
 
     // This processes clock cycles and anything related,
     // such as timers and interrupts

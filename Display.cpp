@@ -131,21 +131,27 @@ void Display::MaybeDrawOneScanLine()
     {
 
         // since we're drawing to the frame, take a lock on the frame buffer
-        displayMutex.lock();
+        //displayMutex.lock();
 
         // draw current scan line
         DrawScanLine(currentScanLine);
 
-        displayMutex.unlock();
+        //displayMutex.unlock();
     }
     else
     {   // Are we in vblank? If so, set explicit VBLANK interrupt
         SetVBlankInterrupt();
         // during vblank, blit image to screen
         
+        
     }
 
     drawNextScanline = false;
+}
+
+void Display::UpdateDisplay()
+{
+    cv::imshow("GameBoy", frameBuffer);
 }
 
 void Display::FrameThreadProc()
@@ -156,12 +162,12 @@ void Display::FrameThreadProc()
 #ifndef RP2040
         // In embedded we don't leave
         // use a keypress to break out of here
-        char key = (char) cv::waitKey(30);   // explicit cast
-        if (key == 27) break; 
+        //char key = (char) cv::waitKey(1);   // explicit cast
+        //if (key == 27) break; 
 
-        displayMutex.lock();
-        cv::imshow("GameBoy", frameBuffer);
-        displayMutex.unlock();
+        //displayMutex.lock();
+        //cv::imshow("GameBoy", frameBuffer);
+        //displayMutex.unlock();
 #endif
     }
 

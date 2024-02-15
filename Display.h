@@ -108,6 +108,8 @@ public:
 
     void MaybeDrawOneScanLine();
 
+    void UpdateDisplay();
+
     void StartDisplay();
     void StopDisplay();
 

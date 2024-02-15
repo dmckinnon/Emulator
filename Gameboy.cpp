@@ -42,6 +42,10 @@ Gameboy::Gameboy(
         this->display.MaybeDrawOneScanLine();
     });
 
+    cpu.SetDisplayUpdateFunc([this](){
+        this->display.UpdateDisplay();
+    });
+
 #ifdef RP2040
     // So we can use a static arg-less function for core 1
     g = this;

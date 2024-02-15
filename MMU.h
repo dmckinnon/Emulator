@@ -40,6 +40,11 @@ public:
             printf("%c\n", v);
         }
 
+        if (address == 0xFF01)
+        {
+            printf("%c\n", value);
+        }
+
         // Semaphore to allow only one writer to memory at a time
         //writeSemaphore.acquire();
         //const std::lock_guard<std::mutex> lock(oamMutex);

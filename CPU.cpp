@@ -227,63 +227,85 @@ void CPU::ExecuteCode()
     
     while (true)
     {
-            auto start = high_resolution_clock::now();
-        // If PC has reached 0x100, then cartridge is valid;
-        // unmap system ROM and use cartridge ROM from now on.
-        // TODO: only do this once
-        if (registers.shorts[PC] >= 0x100 && stillInSystemRom)
+        // Make sure main loop happens at 60Hz
+        // then update screen:
+        // basically force-restrict to 60fps
+        // Signal entire display update
+        // clock divider is getting reset every so often
+        //if (cycles % 69905 == 0)
         {
-            mmu->UnmapSystemRom();
-            stillInSystemRom = false;
-            #ifdef QUIT_AFTER_BOOT
-            break;
-            #endif
+        //    SignalDisplayToUpdate();
         }
 
-        // The loop logic is:
-        // Execute next instruction and get number of cycles it took
-        // Increment the timer by this number of cycles
-        // Check for any interrupts and affect the PC if need be
-
-        int cycles = ExecuteNextInstruction();
-
-        if (cycles < 0)
+        int cycleCounter = 0;
+        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+        while (cycleCounter < 69905)
         {
-            // write out the memory for serial
-            break;
+
+            // If PC has reached 0x100, then cartridge is valid;
+            // unmap system ROM and use cartridge ROM from now on.
+            // TODO: only do this once
+            if (registers.shorts[PC] >= 0x100 && stillInSystemRom)
+            {
+                mmu->UnmapSystemRom();
+                stillInSystemRom = false;
+                #ifdef QUIT_AFTER_BOOT
+                break;
+                #endif
+            }
+
+            // The loop logic is:
+            // Execute next instruction and get number of cycles it took
+            // Increment the timer by this number of cycles
+            // Check for any interrupts and affect the PC if need be
+
+            int cycles = ExecuteNextInstruction();
+            cycleCounter += cycles;
+
+            if (cycles < 0)
+            {
+                // write out the memory for serial
+                break;
+            }
+
+            
+            // Spin the clock for the number of mCycles (= 4 regular cycles) the previous instruction took
+            // timers to increment, timer interrupts to fire, etc. If an interrupt occurs,
+            // break and handle this before continuing
+            ExecuteCycles(cycles);
+
+            // Check if interrupts are pending:
+            // if they are, execute
+            // Do not do this if interrupts were just enabled - that lets them happen on the next cycle
+            // This boolean functions as the IME flag - this en/dis-ables jumping to interrupt vectors
+            if (interruptsAreEnabled)
+            {
+                CheckAndMaybeHandleInterrupts();
+            }
+
+            // EI, DI and RETI change interrupt enablement on the cycle after their instruction
+            if (enableInterruptsNextCycle)
+            {
+                interruptsAreEnabled = true;
+                enableInterruptsNextCycle = false;
+                // Write to interrupt enable register
+
+            }
+            else if (disableInterruptsNextCycle)
+            {
+                interruptsAreEnabled = false;
+                disableInterruptsNextCycle = false;
+            }
         }
 
-        
-        // Spin the clock for the number of mCycles (= 4 regular cycles) the previous instruction took
-        // timers to increment, timer interrupts to fire, etc. If an interrupt occurs,
-        // break and handle this before continuing
-        ExecuteCycles(cycles);
+        // Time for a display update
+        SignalDisplayToUpdate();
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
-        // Check if interrupts are pending:
-        // if they are, execute
-        // Do not do this if interrupts were just enabled - that lets them happen on the next cycle
-        // This boolean functions as the IME flag - this en/dis-ables jumping to interrupt vectors
-        if (interruptsAreEnabled)
-        {
-            CheckAndMaybeHandleInterrupts();
-        }
-
-        // EI, DI and RETI change interrupt enablement on the cycle after their instruction
-        if (enableInterruptsNextCycle)
-        {
-            interruptsAreEnabled = true;
-            enableInterruptsNextCycle = false;
-            // Write to interrupt enable register
-
-        }
-        else if (disableInterruptsNextCycle)
-        {
-            interruptsAreEnabled = false;
-            disableInterruptsNextCycle = false;
-        }
-        auto stop = high_resolution_clock::now();
-        auto duration = duration_cast<microseconds>(stop - start);
-        //cout << "time of execution: " << duration.count() << endl;
+        // Wait whatever is left of 16 ms
+        auto millis = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000;
+        auto remaining = 16 - millis;
+        std::this_thread::sleep_for(std::chrono::milliseconds(remaining));
     }
 
     // end execution
@@ -934,7 +956,11 @@ int CPU::ExecuteNextInstruction()
             case NOP:
             {
                 // NOP takes 1 M-cycle == 4 clock cycles
-                //mCycles += 1;
+                if (oldPC > 256)
+                {
+                    static int potato = 5;
+                    potato ++;
+                }
                 break;
             }
             case STOP:
@@ -1760,7 +1786,6 @@ int CPU::ExecuteNextInstruction()
             {
                 mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[H]);
                 mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[L]);
-                registers.shorts[SP] --;
                 mCycles += 3;
                 break;
             }
@@ -1826,7 +1851,7 @@ int CPU::ExecuteNextInstruction()
 
 #ifdef DEBUG_OUT
     uint16_t programCounter = registers.shorts[PC];
-    if (programCounter >= 0xFF)
+    if (programCounter >= 0xFF || instruction == 0)
     {
         printf("instruction: %x  at PC: %d  %x\n", instruction, oldPC, oldPC);
 
@@ -1841,6 +1866,22 @@ int CPU::ExecuteNextInstruction()
     }
     
 #endif
+
+    /*if (oldPC == 0x55
+     || (oldPC == 0xfe)
+     || oldPC == 0xe0)
+    {
+        printf("instruction: %x  at PC: %d  %x\n", instruction, oldPC, oldPC);
+
+        // Print all registers for debug
+        printf("A: %x\tB: %x\tC: %x\tD: %x\nE: %x\tH: %x\tL: %x\tF: %x\n",
+                registers.bytes[A], registers.bytes[B], registers.bytes[C], registers.bytes[D], 
+                registers.bytes[E], registers.bytes[H], registers.bytes[L], 
+                registers.bytes[F]);
+        printf("AF: %x\tBC: %x\tDE: %x\tHL: %x\nSP: %x\tPC: %x\n",
+                registers.shorts[AF], registers.shorts[BC], registers.shorts[DE], registers.shorts[HL], 
+                registers.shorts[SP], registers.shorts[PC]);
+    }*/
 
     // Update PC if a jump instruction has not been executed
     if (!pcChanged)
