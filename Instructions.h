@@ -65,7 +65,7 @@
 #define RETURN_NZ          0xC0
 #define RETURN_NC          0xD0
 #define RETURN_Z           0xC8
-#define RETURN_C           0xE8
+#define RETURN_C           0xD8
 #define RETURN_I           0xD9
 #define RETURN             0xC9
 #define CALL_Z_a16         0xCC
@@ -196,6 +196,7 @@
 #define PUSH_AF       0xF5
 #define LOAD_HL_SP_r8 0xF8
 #define LOAD_SP_HL    0xF9
+#define ADD_SP_r8     0xE8
 
 // 8 bit arithmetic / logic
 #define SCF        0x37

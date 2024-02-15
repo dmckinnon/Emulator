@@ -5,7 +5,7 @@
 #include <string.h>
 #include <thread>
 
-#define DEBUG_OUT
+//#define DEBUG_OUT
 
 //#define QUIT_AFTER_BOOT
 
@@ -304,8 +304,8 @@ void CPU::ExecuteCode()
 
         // Wait whatever is left of 16 ms
         auto millis = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000;
-        auto remaining = 16 - millis;
-        std::this_thread::sleep_for(std::chrono::milliseconds(remaining));
+        auto remaining = 16 - millis/1000;
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
 
     // end execution
@@ -1346,176 +1346,6 @@ int CPU::ExecuteNextInstruction()
                 break;
             }
 
-            // RESET instructions
-            case RESET_00H:
-            {
-                pcChanged = true;
-                // Push current PC onto stack and jump to address 0x0000
-                uint16_t pcReturnAddr = registers.shorts[PC] + 1;
-                PUSH_RET_ADDR_TO_STACK(pcReturnAddr)
-                registers.shorts[PC] = 0x0000;
-                mCycles += 4;
-                break;
-            }
-            case RESET_08H:
-            {
-                pcChanged = true;
-                // Push current PC onto stack and jump to address 0x0008
-                uint16_t pcReturnAddr = registers.shorts[PC] + 1;
-                PUSH_RET_ADDR_TO_STACK(pcReturnAddr)
-                registers.shorts[PC] = 0x0008;
-                mCycles += 4;
-                break;
-            }
-            case RESET_10H:
-            {
-                pcChanged = true;
-                // Push current PC onto stack and jump to address 0x0010
-                uint16_t pcReturnAddr = registers.shorts[PC] + 1;
-                PUSH_RET_ADDR_TO_STACK(pcReturnAddr)
-                registers.shorts[PC] = 0x0010;
-                mCycles += 4;
-                break;
-            }
-            case RESET_18H:
-            {
-                pcChanged = true;
-                // Push current PC onto stack and jump to address 0x0018
-                uint16_t pcReturnAddr = registers.shorts[PC] + 1;
-                PUSH_RET_ADDR_TO_STACK(pcReturnAddr)
-                registers.shorts[PC] = 0x0018;
-                mCycles += 4;
-                break;
-            }
-            case RESET_20H:
-            {
-                pcChanged = true;
-                // Push current PC onto stack and jump to address 0x0020
-                uint16_t pcReturnAddr = registers.shorts[PC] + 1;
-                PUSH_RET_ADDR_TO_STACK(pcReturnAddr)
-                registers.shorts[PC] = 0x0020;
-                mCycles += 4;
-                break;
-            }
-            case RESET_28H:
-            {
-                pcChanged = true;
-                // Push current PC onto stack and jump to address 0x0028
-                uint16_t pcReturnAddr = registers.shorts[PC] + 1;
-                PUSH_RET_ADDR_TO_STACK(pcReturnAddr)
-                registers.shorts[PC] = 0x0028;
-                mCycles += 4;
-                break;
-            }
-            case RESET_30H:
-            {
-                pcChanged = true;
-                // Push current PC onto stack and jump to address 0x0030
-                uint16_t pcReturnAddr = registers.shorts[PC] + 1;
-                PUSH_RET_ADDR_TO_STACK(pcReturnAddr)
-                registers.shorts[PC] = 0x0030;
-                mCycles += 4;
-                break;
-            }
-            case RESET_38H:
-            {
-                pcChanged = true;
-                // Push current PC onto stack and jump to address 0x0038
-                uint16_t pcReturnAddr = registers.shorts[PC] + 1;
-                PUSH_RET_ADDR_TO_STACK(pcReturnAddr)
-                registers.shorts[PC] = 0x0038;
-                mCycles += 4;
-                break;
-            }
-            
-
-            /////////////////////////////
-            // 8 bit arithmetic and logic
-
-            // Set carry flag instruction
-            case SCF:
-            {
-                // Set carry, clear N and H
-                registers.bytes[F] |= CarryFlag;
-                // reset subtraction flag
-                registers.bytes[F] &= ~AddSubFlag;
-                // reset half carry flag
-                registers.bytes[F] &= ~HalfCarryFlag;
-                mCycles += 1;
-                break;
-            }
-
-            // Decimal Adjust Accumulator instruction
-            // This adjusts binary computation and flags to be BCD
-            case DAA:
-            {
-                mCycles += 1;
-                uint8_t a = registers.bytes[A];
-                if (!(registers.bytes[F] & AddSubFlag))
-                {  // after an addition, adjust if (half-)carry occurred or if result is out of bounds
-                    if ((registers.bytes[F] & CarryFlag) || a > 0x99)
-                    {
-                        a += 0x60;
-                        registers.bytes[F] |= CarryFlag;
-                    }
-                    if ((registers.bytes[F] & HalfCarryFlag) || (a & 0x0f) > 0x09)
-                    {
-                        a += 0x6;
-                    }
-                }
-                else
-                {  // after a subtraction, only adjust if (half-)carry occurred
-                    if (registers.bytes[F] & CarryFlag)
-                    {
-                        a -= 0x60;
-                    }
-                    if (registers.bytes[F] & HalfCarryFlag)
-                    {
-                        a -= 0x6;
-                    }
-                }
-                // these flags are always updated
-                // the usual z flag
-                if (a == 0)
-                {
-                    registers.bytes[F] |= ZeroFlag;
-                }
-                registers.bytes[F] &= ~HalfCarryFlag; // h flag is always cleared
-
-                // Put the updated value back into register A
-                registers.bytes[A] = a;
-
-                break;
-            }
-
-            // Complement Accumulator instruction
-            // This flips all bits in the accumulator
-            case CPL:
-            {
-                // Flip all bits in A
-                registers.bytes[A] = ~registers.bytes[A];
-                // Set subtraction flag
-                registers.bytes[F] |= AddSubFlag;
-                // Set half carry flag
-                registers.bytes[F] |= HalfCarryFlag;
-                mCycles += 1;
-                break;
-            }
-
-            // Complement Carry Flag instruction
-            // This flips the carry flag
-            case CCF:
-            {
-                // Flip carry flag
-                registers.bytes[F] ^= CarryFlag;
-                // Reset subtraction flag
-                registers.bytes[F] &= ~AddSubFlag;
-                // Reset half carry flag
-                registers.bytes[F] &= ~HalfCarryFlag;
-                mCycles += 1;
-                break;
-            }
-
             case ADD_A_d8:
             {
                 Add8(registers.bytes[A], mmu->ReadFromAddress(registers.shorts[PC] + 1), registers.bytes[A]);
@@ -1649,12 +1479,6 @@ int CPU::ExecuteNextInstruction()
                 break;
             }
 
-            
-            
-
-            // 8 bit special load instructions
-
-            // load A into BC or DE, and vice versa
 
             // Load and store with offset address
             case LOAD_Cv_A:
@@ -1829,6 +1653,13 @@ int CPU::ExecuteNextInstruction()
                 mCycles += 2;
                 break;
             }
+            case ADD_SP_r8:
+            {
+                uint8_t r = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+                registers.shorts[SP] += r;
+                mCycles += 2;
+                break;
+            }
 
             /////////////////////////////////
             // Prefix'd instructions
@@ -1840,6 +1671,187 @@ int CPU::ExecuteNextInstruction()
                 mCycles += ExecutePrefixInstruction(instruction);
                 break;
             }
+
+            // RESET instructions
+            case RESET_00H:
+            {
+                pcChanged = true;
+                // Push current PC onto stack and jump to address 0x0000
+                uint16_t pcReturnAddr = registers.shorts[PC] + 1;
+                PUSH_RET_ADDR_TO_STACK(pcReturnAddr)
+                registers.shorts[PC] = 0x0000;
+                mCycles += 4;
+                break;
+            }
+            case RESET_08H:
+            {
+                pcChanged = true;
+                // Push current PC onto stack and jump to address 0x0008
+                uint16_t pcReturnAddr = registers.shorts[PC] + 1;
+                PUSH_RET_ADDR_TO_STACK(pcReturnAddr)
+                registers.shorts[PC] = 0x0008;
+                mCycles += 4;
+                break;
+            }
+            case RESET_10H:
+            {
+                pcChanged = true;
+                // Push current PC onto stack and jump to address 0x0010
+                uint16_t pcReturnAddr = registers.shorts[PC] + 1;
+                PUSH_RET_ADDR_TO_STACK(pcReturnAddr)
+                registers.shorts[PC] = 0x0010;
+                mCycles += 4;
+                break;
+            }
+            case RESET_18H:
+            {
+                pcChanged = true;
+                // Push current PC onto stack and jump to address 0x0018
+                uint16_t pcReturnAddr = registers.shorts[PC] + 1;
+                PUSH_RET_ADDR_TO_STACK(pcReturnAddr)
+                registers.shorts[PC] = 0x0018;
+                mCycles += 4;
+                break;
+            }
+            case RESET_20H:
+            {
+                pcChanged = true;
+                // Push current PC onto stack and jump to address 0x0020
+                uint16_t pcReturnAddr = registers.shorts[PC] + 1;
+                PUSH_RET_ADDR_TO_STACK(pcReturnAddr)
+                registers.shorts[PC] = 0x0020;
+                mCycles += 4;
+                break;
+            }
+            case RESET_28H:
+            {
+                pcChanged = true;
+                // Push current PC onto stack and jump to address 0x0028
+                uint16_t pcReturnAddr = registers.shorts[PC] + 1;
+                PUSH_RET_ADDR_TO_STACK(pcReturnAddr)
+                registers.shorts[PC] = 0x0028;
+                mCycles += 4;
+                break;
+            }
+            case RESET_30H:
+            {
+                pcChanged = true;
+                // Push current PC onto stack and jump to address 0x0030
+                uint16_t pcReturnAddr = registers.shorts[PC] + 1;
+                PUSH_RET_ADDR_TO_STACK(pcReturnAddr)
+                registers.shorts[PC] = 0x0030;
+                mCycles += 4;
+                break;
+            }
+            case RESET_38H:
+            {
+                pcChanged = true;
+                // Push current PC onto stack and jump to address 0x0038
+                uint16_t pcReturnAddr = registers.shorts[PC] + 1;
+                PUSH_RET_ADDR_TO_STACK(pcReturnAddr)
+                registers.shorts[PC] = 0x0038;
+                mCycles += 4;
+                break;
+            }
+            
+
+            /////////////////////////////
+            // 8 bit arithmetic and logic
+
+            // Set carry flag instruction
+            case SCF:
+            {
+                // Set carry, clear N and H
+                registers.bytes[F] |= CarryFlag;
+                // reset subtraction flag
+                registers.bytes[F] &= ~AddSubFlag;
+                // reset half carry flag
+                registers.bytes[F] &= ~HalfCarryFlag;
+                mCycles += 1;
+                break;
+            }
+
+            // Decimal Adjust Accumulator instruction
+            // This adjusts binary computation and flags to be BCD
+            case DAA:
+            {
+                mCycles += 1;
+                uint8_t a = registers.bytes[A];
+                if (!(registers.bytes[F] & AddSubFlag))
+                {  // after an addition, adjust if (half-)carry occurred or if result is out of bounds
+                    if ((registers.bytes[F] & CarryFlag) || a > 0x99)
+                    {
+                        a += 0x60;
+                        registers.bytes[F] |= CarryFlag;
+                    }
+                    if ((registers.bytes[F] & HalfCarryFlag) || (a & 0x0f) > 0x09)
+                    {
+                        a += 0x6;
+                    }
+                }
+                else
+                {  // after a subtraction, only adjust if (half-)carry occurred
+                    if (registers.bytes[F] & CarryFlag)
+                    {
+                        a -= 0x60;
+                    }
+                    if (registers.bytes[F] & HalfCarryFlag)
+                    {
+                        a -= 0x6;
+                    }
+                }
+                // these flags are always updated
+                // the usual z flag
+                if (a == 0)
+                {
+                    registers.bytes[F] |= ZeroFlag;
+                }
+                registers.bytes[F] &= ~HalfCarryFlag; // h flag is always cleared
+
+                // Put the updated value back into register A
+                registers.bytes[A] = a;
+
+                break;
+            }
+
+            // Complement Accumulator instruction
+            // This flips all bits in the accumulator
+            case CPL:
+            {
+                // Flip all bits in A
+                registers.bytes[A] = ~registers.bytes[A];
+                // Set subtraction flag
+                registers.bytes[F] |= AddSubFlag;
+                // Set half carry flag
+                registers.bytes[F] |= HalfCarryFlag;
+                mCycles += 1;
+                break;
+            }
+
+            // Complement Carry Flag instruction
+            // This flips the carry flag
+            case CCF:
+            {
+                // Flip carry flag
+                registers.bytes[F] ^= CarryFlag;
+                // Reset subtraction flag
+                registers.bytes[F] &= ~AddSubFlag;
+                // Reset half carry flag
+                registers.bytes[F] &= ~HalfCarryFlag;
+                mCycles += 1;
+                break;
+            }
+
+            
+
+            
+            
+
+            // 8 bit special load instructions
+
+            // load A into BC or DE, and vice versa
+
+            
 
             // Jumps / calls
             default:

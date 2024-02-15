@@ -3,6 +3,7 @@
 
 #ifndef RP2040
 #include <mutex>
+#include <iostream>
 #else
 #include "pico/mutex.h"
 #endif
@@ -36,14 +37,11 @@ public:
         // Debug with serial
          if (address == 0xFF02 && value == 0x81)
         {
-            uint8_t v = ReadFromAddress(0xFF01);
-            printf("%c\n", v);
+            unsigned char v = ReadFromAddress(0xFF01);
+            std::cout << v << std::flush;
+
         }
 
-        if (address == 0xFF01)
-        {
-            printf("%c\n", value);
-        }
 
         // Semaphore to allow only one writer to memory at a time
         //writeSemaphore.acquire();
