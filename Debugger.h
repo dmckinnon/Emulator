@@ -45,10 +45,7 @@ private:
     // largely copies of what is in Display
     void RenderTiles(uint16_t address, int height);
     void RenderSprites(
-        uint8_t controlReg,
         uint16_t address,
-        uint16_t tileNumber,
-        uint16_t xOffset,
         uint16_t yOffset);
     uint8_t GetColour(uint8_t colourNum, uint16_t paletteAddress);
 
