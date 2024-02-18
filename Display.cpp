@@ -152,7 +152,7 @@ void Display::MaybeDrawOneScanLine()
 void Display::UpdateDisplay()
 {
     cv::imshow("GameBoy", frameBuffer);
-    cv::waitKey(15); 
+    //cv::waitKey(15); 
 }
 
 void Display::FrameThreadProc()

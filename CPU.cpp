@@ -5,7 +5,9 @@
 #include <string.h>
 #include <thread>
 
-//#define DEBUG_OUT
+#define DEBUG_OUT
+bool bePrinting = false;
+
 
 //#define QUIT_AFTER_BOOT
 
@@ -305,7 +307,7 @@ void CPU::ExecuteCode()
         // Wait whatever is left of 16 ms
         auto millis = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000;
         auto remaining = 16 - millis/1000;
-        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+        //std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
 
     // end execution
@@ -888,8 +890,14 @@ int CPU::ExecuteNextInstruction()
         uint8_t reg = doubleRegMap[arg1 >> 1];
         if (arg1 % 2 == 0)
         {
+            uint16_t value = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
+            //if (reg == BC && value == 0x1200)
+            //{
+            //    bePrinting = true;
+            //}
+
             // 16 bit load immediate
-            registers.shorts[reg] = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
+            registers.shorts[reg] = value;
             registers.shorts[PC] += 2;
             mCycles += 2;
         }
@@ -1650,6 +1658,8 @@ int CPU::ExecuteNextInstruction()
                 registers.bytes[A] = mmu->ReadFromAddress(registers.shorts[SP]++);
                 // This sets every flag to contents of F
                 // this should happen naturally
+                // lower 4 bits of F are always 0. Enforce this:
+                registers.bytes[F] &= 0xF0;
                 mCycles += 2;
                 break;
             }
@@ -1863,7 +1873,7 @@ int CPU::ExecuteNextInstruction()
 
 #ifdef DEBUG_OUT
     uint16_t programCounter = registers.shorts[PC];
-    if (programCounter >= 0xFF || instruction == 0)
+    if (bePrinting)
     {
         printf("instruction: %x  at PC: %d  %x\n", instruction, oldPC, oldPC);
 
