@@ -341,7 +341,7 @@ inline void CPU::Add8(uint8_t A, uint8_t B, uint8_t& C)
     }
 
     // check zero:
-    if (r == 0)
+    if (C == 0)
     {
         registers.bytes[F] |= ZeroFlag;
     }
@@ -436,7 +436,7 @@ inline void CPU::Sub8(uint8_t A, uint8_t B, uint8_t& C)
     }
 
     // Check zero:
-    if (r == 0)
+    if (C == 0)
     {
         registers.bytes[F] |= ZeroFlag;
     }
@@ -475,7 +475,7 @@ inline void CPU::AddC8(uint8_t A, uint8_t B, uint8_t& C)
     }
 
     // check zero:
-    if (r == 0)
+    if (C == 0)
     {
         registers.bytes[F] |= ZeroFlag;
     }
@@ -514,7 +514,7 @@ inline void CPU::SubC8(uint8_t A, uint8_t B, uint8_t& C)
     }
 
     // Check zero:
-    if (r == 0)
+    if (C == 0)
     {
         registers.bytes[F] |= ZeroFlag;
     }
@@ -624,7 +624,7 @@ inline void CPU::Cp8(uint8_t A, uint8_t B)
     }
 
     // Check zero:
-    if (r == 0)
+    if ((uint8_t)r == 0)
     {
         registers.bytes[F] |= ZeroFlag;
     }
@@ -1787,7 +1787,43 @@ int CPU::ExecuteNextInstruction()
             {
                 mCycles += 1;
                 uint8_t a = registers.bytes[A];
-                if (!(registers.bytes[F] & AddSubFlag))
+                bool nFlagSet = (registers.bytes[F] & AddSubFlag) != 0;
+                bool cFlagSet = (registers.bytes[F] & CarryFlag) != 0;
+                bool hFlagSet = (registers.bytes[F] & HalfCarryFlag) != 0;
+                if (!nFlagSet)
+                {
+                    if (cFlagSet || a > 0x99)
+                    {
+                        a += 0x60;
+                        registers.bytes[F] |= CarryFlag;
+                    }
+                    if (hFlagSet || (a & 0x0f) > 0x09)
+                    {
+                        a += 0x06;
+                    }
+                }
+                else
+                {
+                    if (cFlagSet)
+                    {
+                        a -= 0x60;
+                    }
+                    if (hFlagSet)
+                    {
+                        a -= 0x06;
+                    }
+                }
+
+                if (a == 0)
+                {
+                    registers.bytes[F] |= ZeroFlag;
+                }
+                registers.bytes[F] &= 0xDF;//~HalfCarryFlag;
+
+
+
+
+                /*if (!(registers.bytes[F] & AddSubFlag))
                 {  // after an addition, adjust if (half-)carry occurred or if result is out of bounds
                     if ((registers.bytes[F] & CarryFlag) || a > 0x99)
                     {
@@ -1817,6 +1853,7 @@ int CPU::ExecuteNextInstruction()
                     registers.bytes[F] |= ZeroFlag;
                 }
                 registers.bytes[F] &= ~HalfCarryFlag; // h flag is always cleared
+                */
 
                 // Put the updated value back into register A
                 registers.bytes[A] = a;
@@ -1872,7 +1909,12 @@ int CPU::ExecuteNextInstruction()
     }
 
 #ifdef DEBUG_OUT
+
     uint16_t programCounter = registers.shorts[PC];
+    if (oldPC == 0xc338)
+    {
+        //bePrinting = true;
+    }
     if (bePrinting)
     {
         printf("instruction: %x  at PC: %d  %x\n", instruction, oldPC, oldPC);
@@ -1888,22 +1930,6 @@ int CPU::ExecuteNextInstruction()
     }
     
 #endif
-
-    /*if (oldPC == 0x55
-     || (oldPC == 0xfe)
-     || oldPC == 0xe0)
-    {
-        printf("instruction: %x  at PC: %d  %x\n", instruction, oldPC, oldPC);
-
-        // Print all registers for debug
-        printf("A: %x\tB: %x\tC: %x\tD: %x\nE: %x\tH: %x\tL: %x\tF: %x\n",
-                registers.bytes[A], registers.bytes[B], registers.bytes[C], registers.bytes[D], 
-                registers.bytes[E], registers.bytes[H], registers.bytes[L], 
-                registers.bytes[F]);
-        printf("AF: %x\tBC: %x\tDE: %x\tHL: %x\nSP: %x\tPC: %x\n",
-                registers.shorts[AF], registers.shorts[BC], registers.shorts[DE], registers.shorts[HL], 
-                registers.shorts[SP], registers.shorts[PC]);
-    }*/
 
     // Update PC if a jump instruction has not been executed
     if (!pcChanged)

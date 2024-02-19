@@ -77,10 +77,10 @@ private:
     };
 
     // Register flags
-    #define ZeroFlag      0x80
-    #define AddSubFlag    0x40
-    #define HalfCarryFlag 0x20
-    #define CarryFlag     0x10
+    #define ZeroFlag      0x80 // Z
+    #define AddSubFlag    0x40 // N
+    #define HalfCarryFlag 0x20 // H
+    #define CarryFlag     0x10 // C
     #define AllFlags      0xF0
     #define MostSigBit    0x80
     #define LeastSigBit   0x10
