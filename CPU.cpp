@@ -118,10 +118,11 @@ void CPU::ExecuteCycles(int numMCycles)
 
         // TIMA only gets updated at the set frequency, downsampled from the 
         // system clock
-        int frequency = GetTmcFrequency();
+        int frequency = GetTmcFrequency(mmu->ReadFromAddress(MMU::TMCRegisterAddress));
         if (clockCounter >= CLOCKSPEED/frequency)
         {   
             // reset clockCounter
+            clockCounter = 0;
 
             // Read clock
             uint8_t timaVal = mmu->ReadFromAddress(MMU::TIMARegisterAddress);
@@ -169,37 +170,50 @@ void CPU::CheckAndMaybeHandleInterrupts()
     // if we had any interrupt, push PC onto stack, disable interrupts
     if (whichInterrupt != 0)
     {
-        // push PC onto Stack
-        mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC]);
-        mmu->WriteToAddress(--registers.shorts[SP], registers.bytes[PC + 1]);
+        // Return to PC, unless HALT mode, in which case return to spot after HALT
+        uint16_t returnAddress = registers.shorts[PC];
+        if (haltMode)
+        {
+            returnAddress = haltReturnPC;
+            haltMode = false;
+        }
+        PUSH_RET_ADDR_TO_STACK(returnAddress)
 
         // disable interrupts
         interruptsAreEnabled = 0;
     }
 
     // Set new PC based on interrupt
+    // and clear corresponding interrupt flag
     if (whichInterrupt & MMU::vblankInterruptBit)
     {
         // Set PC to start of VBlank ISR
-        registers.shorts[PC] = MMU::VBlankISRAddress;      
+        registers.shorts[PC] = MMU::VBlankISRAddress;   
+        interruptRequests &= ~MMU::vblankInterruptBit;
     }
     else if (whichInterrupt & MMU::lcdInterruptBit)
     {
         // Set PC to start of LCD Stat ISR
         registers.shorts[PC] = MMU::LCDISRAddress;
+        interruptRequests &= ~MMU::lcdInterruptBit;
     }
     else if (whichInterrupt & MMU::timerInterruptBit)
     {
         registers.shorts[PC] = MMU::TimerISRAddress;
+        interruptRequests &= ~MMU::timerInterruptBit;
     }
     else if (whichInterrupt & MMU::serialInterruptBit)
     {
         registers.shorts[PC] = MMU::SerialISRAddress;
+        interruptRequests &= ~MMU::serialInterruptBit;
     }
     else if (whichInterrupt & MMU::joypadInterruptBit)
     {
         registers.shorts[PC] = MMU::JoypadISRAddress;
+        interruptRequests &= ~MMU::joypadInterruptBit;
     }
+
+    mmu->WriteToAddress(MMU::interruptFlagRegisterAddress, interruptRequests);
 
     // execute 20 clock cycles = 5 machine cycles
     // note that this won't trigger an interrupt if the timer overflows
@@ -260,15 +274,23 @@ void CPU::ExecuteCode()
             // Execute next instruction and get number of cycles it took
             // Increment the timer by this number of cycles
             // Check for any interrupts and affect the PC if need be
-
-            int cycles = ExecuteNextInstruction();
-            cycleCounter += cycles;
-
-            if (cycles < 0)
+            int cycles = 0;
+            if (!haltMode)
             {
-                // write out the memory for serial
-                break;
+                cycles = ExecuteNextInstruction();
+                cycleCounter += cycles;
+                if (cycles < 0)
+                {
+                    // write out the memory for serial
+                    break;
+                }
             }
+            else
+            {
+                cycleCounter ++;
+            }
+
+            
 
             
             // Spin the clock for the number of mCycles (= 4 regular cycles) the previous instruction took
@@ -283,6 +305,22 @@ void CPU::ExecuteCode()
             if (interruptsAreEnabled)
             {
                 CheckAndMaybeHandleInterrupts();
+            }
+            // If IME is not set, but we are in HALT mode, we still need to check IF and IE
+            else
+            {
+                if (haltMode)
+                {
+                    uint8_t interruptEnable = mmu->ReadFromAddress(MMU::interruptEnableRegisterAddress);
+                    uint8_t interruptRequests = mmu->ReadFromAddress(MMU::interruptFlagRegisterAddress);
+
+                    uint8_t whichInterrupt = interruptEnable & interruptRequests;
+                    // if we had any interrupt, push PC onto stack, disable interrupts
+                    if (whichInterrupt != 0)
+                    {
+                        haltMode = false;
+                    }
+                }
             }
 
             // EI, DI and RETI change interrupt enablement on the cycle after their instruction
@@ -707,7 +745,7 @@ int CPU::ExecuteNextInstruction()
         }
         else if (y == HL_pointer)
         {
-            registers.bytes[y] = mmu->ReadFromAddress(registers.shorts[HL]);
+            registers.bytes[x] = mmu->ReadFromAddress(registers.shorts[HL]);
             mCycles += 1;
         }
     }
@@ -964,11 +1002,6 @@ int CPU::ExecuteNextInstruction()
             case NOP:
             {
                 // NOP takes 1 M-cycle == 4 clock cycles
-                if (oldPC > 256)
-                {
-                    static int potato = 5;
-                    potato ++;
-                }
                 break;
             }
             case STOP:
@@ -991,17 +1024,42 @@ int CPU::ExecuteNextInstruction()
             }
             case HALT:
             {
-                return 1;
+                if (interruptsAreEnabled)
+                {
+                    haltMode = true;
+                    haltReturnPC = registers.shorts[PC] + 1;
+                }
+                else
+                {
+                    uint8_t interruptEnable = mmu->ReadFromAddress(MMU::interruptEnableRegisterAddress);
+                    uint8_t interruptRequests = mmu->ReadFromAddress(MMU::interruptFlagRegisterAddress);
+
+                    uint8_t whichInterrupt = interruptEnable & interruptRequests;
+                    // if we had any interrupt, push PC onto stack, disable interrupts
+                    if (whichInterrupt == 0)
+                    {
+                        haltMode = true;
+                    }
+                    else
+                    {
+                        // if IF & IE is NOT 0, this is a no-op
+                    }
+                }
+
+
+                break;
             }
             case DI:
             {
                 disableInterruptsNextCycle = true;
+                //bePrinting = true;
                 //mCycles += 1;
                 break;
             }
             case EI:
             {
                 enableInterruptsNextCycle = true;
+                //bePrinting = true;
                 //mCycles += 1;
                 break;
             }
@@ -1568,9 +1626,11 @@ int CPU::ExecuteNextInstruction()
             // Add immediate value to SP and store in HL
             case LOAD_HL_SP_r8:
             {
-                uint16_t sp = registers.shorts[SP];
-                uint16_t hl = registers.shorts[HL];
-                uint8_t r = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+                // These two need to be treated as unsigned so they keep their full value
+                int32_t sp = registers.shorts[SP];
+                int32_t hl = registers.shorts[HL];
+                // this needs to be signed
+                int8_t r = mmu->ReadFromAddress(registers.shorts[PC] + 1);
 
                 // check half carry flag:
                 if ((((sp & 0xf) + (r & 0xf)) & 0x10) == 0x10)
@@ -1578,14 +1638,16 @@ int CPU::ExecuteNextInstruction()
                     registers.bytes[F] |= HalfCarryFlag;
                 }
 
-                // check full carry flag
-                hl = sp + (uint16_t)r;
+                
+                hl = sp + r;
 
+                // check full carry flag
+                // TODO is this correct?? Shouldn't I be checking 16-bit carry?
                 if (hl & 0x0100)
                 {
                     registers.bytes[F] |= CarryFlag;
                 }
-                registers.shorts[HL] = hl;
+                registers.shorts[HL] = (uint16_t)hl;
 
                 // reset 0 flag??
                 registers.bytes[F] &= ~ZeroFlag;
@@ -1917,16 +1979,27 @@ int CPU::ExecuteNextInstruction()
     }
     if (bePrinting)
     {
-        printf("instruction: %x  at PC: %d  %x\n", instruction, oldPC, oldPC);
+        printf("\ninstruction: %x  at PC: %d  %x\n", instruction, oldPC, oldPC);
 
         // Print all registers for debug
-        printf("A: %x\tB: %x\tC: %x\tD: %x\nE: %x\tH: %x\tL: %x\tF: %x\n",
+        printf("A: %x\tB: %x\tC: %x\tD: %x\tE: %x\tH: %x\tL: %x\tF: %x\n",
                 registers.bytes[A], registers.bytes[B], registers.bytes[C], registers.bytes[D], 
                 registers.bytes[E], registers.bytes[H], registers.bytes[L], 
                 registers.bytes[F]);
-        printf("AF: %x\tBC: %x\tDE: %x\tHL: %x\nSP: %x\tPC: %x\n",
+        printf("AF: %x\tBC: %x\tDE: %x\tHL: %x\tSP: %x\tPC: %x\n",
                 registers.shorts[AF], registers.shorts[BC], registers.shorts[DE], registers.shorts[HL], 
                 registers.shorts[SP], registers.shorts[PC]);
+        printf("IE: %x\tIF: %x\n", mmu->ReadFromAddress(0xFFFF), mmu->ReadFromAddress(0xFF0F));
+        printf("Timer register: %d\n", mmu->ReadFromAddress(MMU::TIMARegisterAddress));
+
+        // top 4 values of stack
+        //static uint16_t topOfStack = 0xdffd;
+        //printf("Stack: \n%x: %x\n%x: %x\n%x: %x\n%x: %x\n", 
+         //   topOfStack-1, mmu->ReadFromAddress(topOfStack-1),
+          //  topOfStack-2, mmu->ReadFromAddress(topOfStack-2),
+           // topOfStack-3, mmu->ReadFromAddress(topOfStack-3),
+        //    topOfStack-4, mmu->ReadFromAddress(topOfStack-4));
+        bePrinting = true;
     }
     
 #endif

@@ -46,6 +46,10 @@ Gameboy::Gameboy(
         this->display.UpdateDisplay();
     });
 
+    mmu->SetTimerReset([this](uint8_t f){
+        cpu.MaybeResetTimer(f);
+    });
+
 #ifdef RP2040
     // So we can use a static arg-less function for core 1
     g = this;

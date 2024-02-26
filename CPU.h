@@ -34,6 +34,21 @@ public:
     // This takes the input format of the 0xFF00 register
     void SetJoypadInterrupt(uint8_t joypadRegister);
 
+    void MaybeResetTimer(uint8_t newTmcVal)
+    {
+        uint8_t newF = GetTmcFrequency(newTmcVal);
+        uint8_t oldF = GetTmcFrequency(mmu->ReadFromAddress(MMU::TMCRegisterAddress));
+        if (newF != oldF)
+        {
+            clockCounter = 0;
+        }
+
+        if (newTmcVal == 5)
+        {
+            newF ++;
+        }
+    }
+
 private:
     enum SixteenBitRegisters
     {
@@ -100,6 +115,10 @@ private:
     bool disableInterruptsNextCycle = false;
     bool interruptsAreEnabled = false;
 
+    // Handling Harold Halt mode
+    bool haltMode = false;
+    uint16_t haltReturnPC = 0;
+
     bool executing;
 
     void InitialiseRegisters();
@@ -120,19 +139,19 @@ private:
 
     void CheckAndMaybeHandleInterrupts();
 
-    inline int GetTmcFrequency()
+    inline int GetTmcFrequency(uint8_t f)
     {
-        uint8_t f = mmu->ReadFromAddress(MMU::TMCRegisterAddress);
+        f = f & MMU::TimerControllerBits;
         switch (f)
         {
             case 0:
-                return 1024; // 4096 Hz
+                return 4096; //Hz, so 1024 cycles
             case 1:
-                return 16;   // 262144 Hz
+                return 262144; //Hz, so 16 cycles
+            case 2:
+                return 65536; //Hz, so 64 cycles
             case 3:
-                return 64;   // 65536 Hz
-            case 4:
-                return 256;  // 16384 Hz
+                return 16384; //Hz, so 256 cycles
             default:
                 // crash?
                 break;

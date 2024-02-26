@@ -1,6 +1,8 @@
 #pragma once
 #include "Rom.h"
 
+#include <functional>
+
 #ifndef RP2040
 #include <mutex>
 #include <iostream>
@@ -22,6 +24,11 @@ public:
     void LoadRomToMemory(std::shared_ptr<Rom> rom);
 
     void UnmapSystemRom();
+
+    void SetTimerReset(std::function<void(uint8_t)> timerReset)
+    {
+        CpuMaybeResetTimer = timerReset;
+    }
 
     inline uint8_t ReadFromAddress(uint16_t address)
     {
@@ -66,6 +73,12 @@ public:
         if (address == DIVRegisterAddress || address == ScanLineCounterAddress)
         {
             value = 0;
+        }
+
+        if (address == TMCRegisterAddress)
+        {
+            // if new frequency is different, reset timer
+            CpuMaybeResetTimer(value);
         }
 
         // Lock access to OAM and VRAM so that only one process can access at once
@@ -144,6 +157,7 @@ public:
     static const int TMARegisterAddress = 0xFF06;
     static const int TMCRegisterAddress = 0xFF07;
     static const uint8_t ClockEnableBit = 0x4;
+    static const uint8_t TimerControllerBits = 0x3;
 
     // Display addresses
     static const uint16_t ScanLineCounterAddress = 0xFF44;
@@ -203,6 +217,8 @@ private:
     void SwitchRomRamMode(uint8_t value);
     void SwapOutRomBank(int bank);
     void HandleBanking(uint16_t address, uint8_t value);
+
+    std::function<void(uint8_t)> CpuMaybeResetTimer;
 
 #if defined(__linux) || defined(_WIN32)
     std::mutex oamMutex;
