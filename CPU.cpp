@@ -287,7 +287,8 @@ void CPU::ExecuteCode()
             }
             else
             {
-                cycleCounter ++;
+                cycles ++;
+                cycleCounter += cycles;
             }
 
             
@@ -725,7 +726,7 @@ int CPU::ExecuteNextInstruction()
     uint8_t arg1 = (instruction >> 3) & 0x07; // y
     uint8_t arg2 = instruction & 0x07; // z
 
-    if (prefix == LOAD_PREFIX)
+    if (prefix == LOAD_PREFIX && instruction != HALT) // this aliases with HALT
     {
         // This is one of many load instructions. Extract arguments:
         uint8_t x = (instruction & 0x38) >> 3;
@@ -996,6 +997,7 @@ int CPU::ExecuteNextInstruction()
     }
     else
     { 
+        
         switch (instruction)
         {
             // Control
@@ -1973,10 +1975,6 @@ int CPU::ExecuteNextInstruction()
 #ifdef DEBUG_OUT
 
     uint16_t programCounter = registers.shorts[PC];
-    if (oldPC == 0xc338)
-    {
-        //bePrinting = true;
-    }
     if (bePrinting)
     {
         printf("\ninstruction: %x  at PC: %d  %x\n", instruction, oldPC, oldPC);
