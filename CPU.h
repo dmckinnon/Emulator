@@ -42,11 +42,6 @@ public:
         {
             clockCounter = 0;
         }
-
-        if (newTmcVal == 5)
-        {
-            newF ++;
-        }
     }
 
 private:

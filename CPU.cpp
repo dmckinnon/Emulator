@@ -716,6 +716,8 @@ int CPU::ExecuteNextInstruction()
     int mCycles = 1;
     int oldPC = registers.shorts[PC];
 
+    bool didReturn = false;
+
     // break up the instruction
     // most load instructions are 0b01xxxyyy
     // most arithmetic instructions are 0b10xxxyyy
@@ -862,17 +864,23 @@ int CPU::ExecuteNextInstruction()
     else if (LOAD_IMMEDIATE_CONDITION(prefix, arg2))
     {
         uint8_t reg = regMap[arg1];
+        uint8_t value = mmu->ReadFromAddress(registers.shorts[PC] + 1);
         if (reg != HL_pointer)
         {
-            registers.bytes[reg] = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+            registers.bytes[reg] = value;
             mCycles += 1;
         }
         else
         {
-            mmu->WriteToAddress(registers.shorts[HL], mmu->ReadFromAddress(registers.shorts[PC] + 1));
+            mmu->WriteToAddress(registers.shorts[HL], value);
             mCycles += 2;
         }
         registers.shorts[PC] ++;
+
+        if (reg == C && value == 0)
+        {
+            bePrinting = false;
+        }
     }
     // Indirect loading
     else if (INDIRECT_LOAD_CONDITION(prefix, arg2))
@@ -1334,6 +1342,7 @@ int CPU::ExecuteNextInstruction()
             case RETURN:
             {
                 pcChanged = true;
+                didReturn = true;
                 
                 POP_PC_FROM_STACK
                 mCycles += 4;
@@ -1342,6 +1351,9 @@ int CPU::ExecuteNextInstruction()
             case RETURN_I:
             {
                 pcChanged = true;
+
+                didReturn = true;
+
                 // Pop 2 bytes from stack and jump to that address
                 POP_PC_FROM_STACK
                 // Enable interrupts
@@ -1358,6 +1370,8 @@ int CPU::ExecuteNextInstruction()
                     pcChanged = true;
                     POP_PC_FROM_STACK
                     mCycles += 5;
+
+                    didReturn = true;
                 }
                 else
                 {
@@ -1374,6 +1388,8 @@ int CPU::ExecuteNextInstruction()
                     pcChanged = true;
                     POP_PC_FROM_STACK
                     mCycles += 5;
+
+                    didReturn = true;
                 }
                 else
                 {
@@ -1390,6 +1406,8 @@ int CPU::ExecuteNextInstruction()
                     pcChanged = true;
                     POP_PC_FROM_STACK
                     mCycles += 5;
+
+                    didReturn = true;
                 }
                 else
                 {
@@ -1406,6 +1424,8 @@ int CPU::ExecuteNextInstruction()
                     pcChanged = true;
                     POP_PC_FROM_STACK
                     mCycles += 5;
+
+                    didReturn = true;
                 }
                 else
                 {
@@ -1611,7 +1631,8 @@ int CPU::ExecuteNextInstruction()
             // Load the stack pointer into the data pointed to by given address
             case LOAD_a16_SP:
             {
-                mmu->WriteToAddress(mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8), registers.shorts[SP]);
+                uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
+                mmu->WriteToAddress(address, registers.shorts[SP]);
                 registers.shorts[PC] += 2;
                 mCycles += 4;
                 break;
@@ -1884,41 +1905,6 @@ int CPU::ExecuteNextInstruction()
                 }
                 registers.bytes[F] &= 0xDF;//~HalfCarryFlag;
 
-
-
-
-                /*if (!(registers.bytes[F] & AddSubFlag))
-                {  // after an addition, adjust if (half-)carry occurred or if result is out of bounds
-                    if ((registers.bytes[F] & CarryFlag) || a > 0x99)
-                    {
-                        a += 0x60;
-                        registers.bytes[F] |= CarryFlag;
-                    }
-                    if ((registers.bytes[F] & HalfCarryFlag) || (a & 0x0f) > 0x09)
-                    {
-                        a += 0x6;
-                    }
-                }
-                else
-                {  // after a subtraction, only adjust if (half-)carry occurred
-                    if (registers.bytes[F] & CarryFlag)
-                    {
-                        a -= 0x60;
-                    }
-                    if (registers.bytes[F] & HalfCarryFlag)
-                    {
-                        a -= 0x6;
-                    }
-                }
-                // these flags are always updated
-                // the usual z flag
-                if (a == 0)
-                {
-                    registers.bytes[F] |= ZeroFlag;
-                }
-                registers.bytes[F] &= ~HalfCarryFlag; // h flag is always cleared
-                */
-
                 // Put the updated value back into register A
                 registers.bytes[A] = a;
 
@@ -1954,16 +1940,6 @@ int CPU::ExecuteNextInstruction()
             }
 
             
-
-            
-            
-
-            // 8 bit special load instructions
-
-            // load A into BC or DE, and vice versa
-
-            
-
             // Jumps / calls
             default:
                 printf("Bad opcode! Instruction: %x  at PC: %d\n", instruction, oldPC);
@@ -1973,6 +1949,13 @@ int CPU::ExecuteNextInstruction()
     }
 
 #ifdef DEBUG_OUT
+
+// Add a clause here to run until one of the RET functions has been hit
+    if (didReturn)
+    {
+        bePrinting = false;
+    }
+    bePrinting = false;
 
     uint16_t programCounter = registers.shorts[PC];
     if (bePrinting)
@@ -1987,18 +1970,22 @@ int CPU::ExecuteNextInstruction()
         printf("AF: %x\tBC: %x\tDE: %x\tHL: %x\tSP: %x\tPC: %x\n",
                 registers.shorts[AF], registers.shorts[BC], registers.shorts[DE], registers.shorts[HL], 
                 registers.shorts[SP], registers.shorts[PC]);
-        printf("IE: %x\tIF: %x\n", mmu->ReadFromAddress(0xFFFF), mmu->ReadFromAddress(0xFF0F));
-        printf("Timer register: %d\n", mmu->ReadFromAddress(MMU::TIMARegisterAddress));
+        //printf("IE: %x\tIF: %x\n", mmu->ReadFromAddress(0xFFFF), mmu->ReadFromAddress(0xFF0F));
+        //printf("Timer register: %d\n", mmu->ReadFromAddress(MMU::TIMARegisterAddress));
+
+        printf("HL value: %x\n", mmu->ReadFromAddress(registers.shorts[HL]));
 
         // top 4 values of stack
-        //static uint16_t topOfStack = 0xdffd;
-        //printf("Stack: \n%x: %x\n%x: %x\n%x: %x\n%x: %x\n", 
-         //   topOfStack-1, mmu->ReadFromAddress(topOfStack-1),
-          //  topOfStack-2, mmu->ReadFromAddress(topOfStack-2),
-           // topOfStack-3, mmu->ReadFromAddress(topOfStack-3),
-        //    topOfStack-4, mmu->ReadFromAddress(topOfStack-4));
+        static uint16_t topOfStack = 0xdff7;
+        printf("Stack: \n%x: %x%x\n%x: %x%x\n%x: %x%x\n%x: %x%x\n", 
+            topOfStack-1, mmu->ReadFromAddress(topOfStack-1), mmu->ReadFromAddress(topOfStack-2),
+            topOfStack-3, mmu->ReadFromAddress(topOfStack-3), mmu->ReadFromAddress(topOfStack-4),
+            topOfStack-5, mmu->ReadFromAddress(topOfStack-5), mmu->ReadFromAddress(topOfStack-6),
+            topOfStack-7, mmu->ReadFromAddress(topOfStack-7), mmu->ReadFromAddress(topOfStack-8));
         bePrinting = true;
     }
+
+    
     
 #endif
 
