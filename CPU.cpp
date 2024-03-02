@@ -8,6 +8,8 @@
 #define DEBUG_OUT
 bool bePrinting = false;
 
+#define SKIP_BOOT_ROM
+
 
 //#define QUIT_AFTER_BOOT
 
@@ -86,6 +88,16 @@ void CPU::InitialiseRegisters()
     registers.shorts[BC] = 0xFF13;
     registers.shorts[DE] = 0x00C1;
     registers.shorts[HL] = 0x8403;
+
+    // for gameboy doctor
+    registers.bytes[A] = 0x01;
+    registers.bytes[F] = 0xB0;
+    registers.bytes[B] = 0x00;
+    registers.bytes[C] = 0x13;
+    registers.bytes[D] = 0x00;
+    registers.bytes[E] = 0xD8;
+    registers.bytes[H] = 0x01;
+    registers.bytes[L] = 0x4D;
 
 }
 
@@ -233,7 +245,7 @@ void CPU::ExecuteCode()
     bool stillInSystemRom = true;
 
 #ifdef SKIP_BOOT_ROM
-    stillInSystemRom = false;
+//    stillInSystemRom = false;
 #endif
 
     if (!mmu)
@@ -241,7 +253,6 @@ void CPU::ExecuteCode()
         return;
     }
     
-    while (true)
     {
         // Make sure main loop happens at 60Hz
         // then update screen:
@@ -396,7 +407,7 @@ inline void CPU::Add8(uint8_t A, uint8_t B, uint8_t& C)
 inline void CPU::Inc8(uint8_t& A)
 {
     // check half carry flag
-    if ((((A & 0xf) + 1) & 0xF0) == 0x10)
+    if ((((A & 0xf) + 1) & 0x10) == 0x10)
     {
         registers.bytes[F] |= HalfCarryFlag;
     }
@@ -424,7 +435,7 @@ inline void CPU::Inc8(uint8_t& A)
 inline void CPU::Dec8(uint8_t& A)
 {
     // check half carry flag
-    if ((((A & 0xf) - 1) & 0xF0) == 0x10)
+    if ((((A & 0xf) - (1 & 0xf)) & 0x10) == 0x10)
     {
         registers.bytes[F] |= HalfCarryFlag;
     }
@@ -711,6 +722,13 @@ int CPU::ExecuteNextInstruction()
     // get instruction at program counter
     uint8_t instruction = mmu->ReadFromAddress(registers.shorts[PC]);
     bool pcChanged = false;
+
+    // make a copy of registers for printing
+    Registers rogisters;
+    for (int i = 0; i < 12; ++i)
+    {
+        rogisters.bytes[i] = registers.bytes[i];
+    }
 
     // number of cycles the instruction will take to execute
     int mCycles = 1;
@@ -1953,9 +1971,8 @@ int CPU::ExecuteNextInstruction()
 // Add a clause here to run until one of the RET functions has been hit
     if (didReturn)
     {
-        bePrinting = false;
+        static int g_useless = 1;
     }
-    bePrinting = false;
 
     uint16_t programCounter = registers.shorts[PC];
     if (bePrinting)
@@ -1985,9 +2002,17 @@ int CPU::ExecuteNextInstruction()
         bePrinting = true;
     }
 
-    
-    
 #endif
+
+    // Gameboy doctor printing
+    uint16_t pc = oldPC;
+    printf("A:%02x F:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x SP:%04x PC:%04x PCMEM:%02x,%02x,%02x,%02x\n",
+        rogisters.bytes[A], rogisters.bytes[F], rogisters.bytes[B], rogisters.bytes[C], 
+        rogisters.bytes[D], rogisters.bytes[E], rogisters.bytes[H], rogisters.bytes[L], 
+        rogisters.shorts[SP], pc,
+        mmu->ReadFromAddress(pc), mmu->ReadFromAddress(pc+1), mmu->ReadFromAddress(pc+2), mmu->ReadFromAddress(pc+3));
+    
+
 
     // Update PC if a jump instruction has not been executed
     if (!pcChanged)
