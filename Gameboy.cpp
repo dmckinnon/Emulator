@@ -63,6 +63,7 @@ Gameboy::~Gameboy()
     display.~Display();
 
     // mmu will destroy itself
+    mmu->~MMU();
 }
 
 bool Gameboy::LoadRom(std::shared_ptr<Rom> rom)

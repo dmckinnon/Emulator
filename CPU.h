@@ -93,7 +93,7 @@ private:
     #define CarryFlag     0x10 // C
     #define AllFlags      0xF0
     #define MostSigBit    0x80
-    #define LeastSigBit   0x10
+    #define LeastSigBit   0x01
 
     Registers registers;
 

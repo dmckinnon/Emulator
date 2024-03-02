@@ -88,8 +88,9 @@ MMU::~MMU()
 {
     if (allRam != nullptr)
     {
-        delete allRam;
+        //delete allRam;
     }
+    currentRom = nullptr;
 }
 
 void MMU::LoadRomToMemory(std::shared_ptr<Rom> rom)

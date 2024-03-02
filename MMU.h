@@ -32,6 +32,10 @@ public:
 
     inline uint8_t ReadFromAddress(uint16_t address)
     {
+        if (address == 0xFF44)
+        {
+            return 0x90;
+        }
         if (useSystemRom && address < cartridgeHeaderOffset)
         {
             return systemRom[address];
@@ -45,9 +49,11 @@ public:
          if (address == 0xFF02 && value == 0x81)
         {
             unsigned char v = ReadFromAddress(0xFF01);
-            std::cout << v << std::flush;
+            //std::cout << v << std::flush;
 
         }
+
+        
 
 
         // Semaphore to allow only one writer to memory at a time

@@ -171,6 +171,8 @@ int main(int argc, char* argv[])
         g.Run();
     }
 
+    gameRom = nullptr;
+
 
     // Debugger may or may not be showing sprites
     // boot rom appears to be broken. Debug through boot ROM again, since graphics isn't working? Probably broke it with

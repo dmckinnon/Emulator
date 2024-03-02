@@ -1557,26 +1557,28 @@ int CPU::ExecuteNextInstruction()
             case ROTATE_RIGHT_A:
             {
                 // Capture the LSB
-                uint8_t lsb = (registers.bytes[A] & LeastSigBit) >> 3;
+                uint8_t a = registers.bytes[A];
+                uint8_t lsb = (a & LeastSigBit) << 4;
                 // Shift the A register right by one bit
-                registers.bytes[A] >>= 1;
+                a >>= 1;
                 // Set the MSB to the value of the carry flag
-                registers.bytes[A] |= (registers.bytes[F] & CarryFlag) >> 4;
+                a |= (registers.bytes[F] & CarryFlag) << 3;
                 // Zero all flags
                 registers.bytes[F] &= ~AllFlags;
                 // Store the LSB in the carry flag
                 registers.bytes[F] |= lsb;
+                registers.bytes[A] = a;
 
                 break;
             }
             case ROTATE_RIGHT_CA:
             {
                 // Capture the LSB
-                uint8_t lsb = (registers.bytes[A] & LeastSigBit) >> 3;
+                uint8_t lsb = (registers.bytes[A] & LeastSigBit) << 4;
                 // Shift the A register right by one bit
                 registers.bytes[A] >>= 1;
                 // Set the MSB to the value of the LSB
-                registers.bytes[A] |= lsb >> 4;
+                registers.bytes[A] |= lsb << 3;
                 // Zero all flags
                 registers.bytes[F] &= ~AllFlags;
                 // Store the LSB in the carry flag
@@ -2136,7 +2138,7 @@ int CPU::PerformPrefixedRotOperation(uint8_t operation, uint8_t regIndex, bool u
 
     switch (operation)
     {
-        case PrefixRLC:
+        case PrefixRL:
         {
             // TODO is this arithmetic or logical shift?
             // Rotate left through carry
@@ -2167,17 +2169,17 @@ int CPU::PerformPrefixedRotOperation(uint8_t operation, uint8_t regIndex, bool u
 
             break;
         }
-        case PrefixRRC:
+        case PrefixRR:
         {
             // Rotate right through carry
-            bool setCarry = false;
+            uint8_t setCarry = 0;
             // carry flag is 0x10. Shift it by 3 to make this MSB
             uint8_t carryBit = (registers.bytes[F] & CarryFlag) << 3;
             if (useHL)
             {
                 val = mmu->ReadFromAddress(registers.shorts[HL]);
                 // MSB is 0x80, carry is 0x10. Shift down
-                setCarry = (val & MostSigBit) >> 3;
+                setCarry = (val & LeastSigBit) << 4;
                 val = (val >> 1) | carryBit;
                 mmu->WriteToAddress(registers.shorts[HL], val);
                 extra_mCycles = 2;
@@ -2186,7 +2188,7 @@ int CPU::PerformPrefixedRotOperation(uint8_t operation, uint8_t regIndex, bool u
             {
                 val = registers.bytes[regIndex];
                 // MSB is 0x80, carry is 0x10. Shift down to convert to carry flag
-                setCarry = (val & MostSigBit) >> 3;
+                setCarry = (val & LeastSigBit) << 4;
                 val = (val >> 1) | carryBit;
                 registers.bytes[regIndex] = val;
             }
@@ -2200,7 +2202,7 @@ int CPU::PerformPrefixedRotOperation(uint8_t operation, uint8_t regIndex, bool u
 
             break;
         }
-        case PrefixRL:
+        case PrefixRLC:
         {
             // Rotate left, but not through carry. MSB goes to LSB
             uint8_t setCarry = 0;
@@ -2218,7 +2220,7 @@ int CPU::PerformPrefixedRotOperation(uint8_t operation, uint8_t regIndex, bool u
                 val = registers.bytes[regIndex];
                 setCarry = (val & MostSigBit) >> 3;
                 uint8_t msb = (val & MostSigBit) >> 7;
-                val = (val << 1) | msb;
+                val = (val << 1);// | msb;
                 registers.bytes[regIndex] = val;
             }
 
@@ -2231,14 +2233,14 @@ int CPU::PerformPrefixedRotOperation(uint8_t operation, uint8_t regIndex, bool u
 
             break;
         }
-        case PrefixRR:
+        case PrefixRRC:
         {
-            // Rotate left, but not through carry. LSB goes to MSB
+            // Rotate right, but not through carry. LSB goes to MSB
             uint8_t setCarry = 0;
             if (useHL)
             {
                 val = mmu->ReadFromAddress(registers.shorts[HL]);
-                setCarry = (val & MostSigBit) >> 3;
+                setCarry = (val & LeastSigBit) << 4;
                 uint8_t lsb = (val & LeastSigBit) << 7;
                 val = (val >> 1) | lsb;
                 mmu->WriteToAddress(registers.shorts[HL], val);
@@ -2246,6 +2248,7 @@ int CPU::PerformPrefixedRotOperation(uint8_t operation, uint8_t regIndex, bool u
             }
             else
             {
+
                 val = registers.bytes[regIndex];
                 setCarry = (val & MostSigBit) >> 3;
                 uint8_t lsb = (val & LeastSigBit) << 7;
@@ -2353,6 +2356,10 @@ int CPU::PerformPrefixedRotOperation(uint8_t operation, uint8_t regIndex, bool u
         case PrefixSRL:
         {
             // Shift right logical. Carry bit comes from lsb
+            // TODO: carry flag is not correctly set here
+            // B == FF
+            // and after SRL, B == 7F
+            // but carry is not set
             uint8_t setCarry = 0;
             if (useHL)
             {
@@ -2365,7 +2372,7 @@ int CPU::PerformPrefixedRotOperation(uint8_t operation, uint8_t regIndex, bool u
             else
             {
                 val = registers.bytes[regIndex];
-                setCarry = (val & LeastSigBit) << 4;
+                setCarry = (val & LeastSigBit) << 4; // this will always be 0? It gets shifted off
                 val = val >> 1;
                 registers.bytes[regIndex] = val;
             }

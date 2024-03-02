@@ -27,7 +27,9 @@ struct Rom
     ~Rom()
     {
         if (bytes != nullptr)
+        {
             free(bytes);
+        }
     }
 
     void SetSize(uint32_t size)
