@@ -9,7 +9,7 @@
 #define SPRITE_WIDTH 8
 #define SPRITE_HEIGHT 8
 
-Debugger::Debugger(std::shared_ptr<MMU> mmu)
+Debugger::Debugger(MMU* mmu)
 {
     this->mmu = mmu;
     blockEveryFrame = false;

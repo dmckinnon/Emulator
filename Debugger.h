@@ -18,7 +18,7 @@
 class Debugger
 {
 public:
-    Debugger(std::shared_ptr<MMU> mmu);
+    Debugger(MMU* mmu);
     ~Debugger();
 
     void ShowTiles(uint16_t address);
@@ -38,7 +38,7 @@ private:
     std::mutex frameMutex;
     std::condition_variable debuggerBlockCV;
 
-    std::shared_ptr<MMU> mmu;
+    MMU* mmu;
 
     cv::Mat tiles;
 

@@ -27,7 +27,7 @@ CPU::CPU()
     InitialiseRegisters();
 }
 
-CPU::CPU(std::shared_ptr<MMU> mmu)
+CPU::CPU(MMU* mmu)
 {
     this->mmu = mmu;
     clockCounter = 0;
@@ -253,7 +253,7 @@ void CPU::ExecuteCode()
         return;
     }
     
-    {
+    while (executing) {
         // Make sure main loop happens at 60Hz
         // then update screen:
         // basically force-restrict to 60fps
@@ -290,9 +290,10 @@ void CPU::ExecuteCode()
             {
                 cycles = ExecuteNextInstruction();
                 cycleCounter += cycles;
-                if (cycles < 0)
+                if (cycles <= 0)
                 {
                     // write out the memory for serial
+                    executing = false;
                     break;
                 }
             }
@@ -502,7 +503,8 @@ inline void CPU::Sub8(uint8_t A, uint8_t B, uint8_t& C)
 inline void CPU::AddC8(uint8_t A, uint8_t B, uint8_t& C)
 {
     // check half carry flag:
-    if ((((A & 0xf) + (B & 0xf)) & 0x10) == 0x10)
+    uint8_t carryBit = (registers.bytes[F] & CarryFlag) >> 4;
+    if ((((A & 0xf) + (B & 0xf) + (carryBit & 0xf)) & 0x10) == 0x10)
     {
         registers.bytes[F] |= HalfCarryFlag;
     }
@@ -512,7 +514,7 @@ inline void CPU::AddC8(uint8_t A, uint8_t B, uint8_t& C)
     }
 
     // check full carry flag
-    uint16_t r = (uint16_t)A + (uint16_t)B + (uint16_t)((registers.bytes[F] & CarryFlag) >> 4);
+    uint16_t r = (uint16_t)A + (uint16_t)B + (uint16_t)(carryBit);
     C = (uint8_t)r;
 
     if (r & 0x0100)
@@ -690,6 +692,7 @@ inline void CPU::Cp8(uint8_t A, uint8_t B)
 inline void CPU::Add16(uint16_t& A, uint16_t& B, uint16_t& C)
 {
     // check half carry flag:
+    // half carry occurs in the first byte, not the second
     if ((((A & 0xfff) + (B & 0xfff)) & 0x1000) == 0x1000)
     {
         registers.bytes[F] |= HalfCarryFlag;
@@ -1039,14 +1042,14 @@ int CPU::ExecuteNextInstruction()
                 // print out memory from 0xA000 until null terminator
                 uint16_t address = 0xA000;
                 unsigned char c = mmu->ReadFromAddress(address);
-                printf("End of test:\n");
-                while (c != 0)
-                {
-                    printf("%c", c);
-                    address ++;
-                    c = mmu->ReadFromAddress(address);
-                }
-                printf("\n");
+                //printf("End of test:\n");
+                //while (c != 0)
+                //{
+                //    printf("%c", c);
+                //    address ++;
+                //    c = mmu->ReadFromAddress(address);
+                //}
+                //printf("\n");
 
                 return -1;
             }
@@ -1771,7 +1774,49 @@ int CPU::ExecuteNextInstruction()
             case ADD_SP_r8:
             {
                 uint8_t r = mmu->ReadFromAddress(registers.shorts[PC] + 1);
-                registers.shorts[SP] += r;
+                uint8_t lowerSP = (uint8_t)(registers.shorts[SP] & 0x00FF);
+                // check half carry flag:
+
+                if ((((lowerSP & 0xf) + (r & 0xf)) & 0x10) == 0x10)
+                {
+                    registers.bytes[F] |= HalfCarryFlag;
+                }
+                else
+                {
+                    registers.bytes[F] &= ~HalfCarryFlag;
+                }
+
+                // check full carry flag
+
+                // Figure out proper carry rules for this damn instruction
+
+
+                uint16_t result = registers.shorts[SP] + (uint32_t)r;
+                
+                if ((result & 0x0100) && !(registers.shorts[SP] & 0x0100))
+                {
+                    registers.bytes[F] |= CarryFlag;
+                }
+                else
+                {
+                    registers.bytes[F] &= ~CarryFlag;
+                }
+                registers.shorts[SP] = result;
+
+                // check zero:
+                if (registers.shorts[SP] == 0)
+                {
+                    registers.bytes[F] |= ZeroFlag;
+                }
+                else
+                {
+                    registers.bytes[F] &= ~ZeroFlag;
+                }
+
+                // Reset subtraction flag
+                registers.bytes[F] &= ~AddSubFlag;
+
+                registers.shorts[PC] ++;
                 mCycles += 2;
                 break;
             }
@@ -2029,6 +2074,11 @@ int CPU::ExecuteNextInstruction()
     if (registers.shorts[PC] >= MMU::cartridgeRomBankSwitchableOffset + MMU::cartridgeRomBankSwitchableSize)
     {
         //return -1;
+    }
+
+    if (mCycles <= 0)
+    {
+        static int q_useless = 1;
     }
 
     return mCycles;

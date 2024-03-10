@@ -96,7 +96,7 @@ class Display
 public:
     // Args are lambdas for setting CPU interrupts
     Display(
-        std::shared_ptr<MMU> memMgmntUnit,
+        MMU* memMgmntUnit,
         std::shared_ptr<ST7789> lcd,
         std::function<void()> setVBlankInterrupt,
         std::function<void()> setLCDStatInterrupt,
@@ -129,7 +129,7 @@ public:
 private:
     // need key press handlers
 
-    std::shared_ptr<MMU> mmu;
+    MMU* mmu;
     std::shared_ptr<ST7789> lcd;
 
     // interrupt handlers

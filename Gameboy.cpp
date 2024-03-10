@@ -17,9 +17,9 @@ Gameboy::Gameboy(
     std::shared_ptr<ST7789> lcd,
     bool useDebugger) :
     mmu(std::make_shared<MMU>(*systemRom)),
-    cpu(mmu),
+    cpu(mmu.get()),
     display(
-        mmu,
+        mmu.get(),
         lcd,
         // Lambda to set VBLANK interrupt in CPU
         [this](){

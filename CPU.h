@@ -7,7 +7,7 @@ class CPU
 {
 public:
     CPU();
-    CPU(std::shared_ptr<MMU> mmu);
+    CPU(MMU* mmu);
     ~CPU();
 
     void ExecuteCode();
@@ -103,7 +103,7 @@ private:
     uint16_t clockDivider;
     uint32_t cycles = 0;
 
-    std::shared_ptr<MMU> mmu;
+    MMU* mmu;
 
     // EI, DI, and RETI change interrupts on the cycle after
     bool enableInterruptsNextCycle = false;
