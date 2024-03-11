@@ -336,7 +336,7 @@
 #define PrefixRot 0x00
 #define PrefixBit 0x40
 #define PrefixRes 0x80
-#define PrefixSet 0x30
+#define PrefixSet 0xC0
 
 // Rotation ops
 #define PrefixRLC  0

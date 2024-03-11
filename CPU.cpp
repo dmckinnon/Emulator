@@ -2165,11 +2165,6 @@ int CPU::ExecutePrefixInstruction(uint8_t instruction)
             }
             else
             {
-                if (registers.shorts[PC] == 0xDEF8 || registers.shorts[PC] == 0xDEFA)
-                {
-                    volatile int x = 0;
-                    registers.shorts[PC] += x;
-                }
                 uint8_t regIndex = GetRegisterFromPrefixIndex(reg);
                 registers.bytes[regIndex] |= 0x01 << bitNumber;
             }
