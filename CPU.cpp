@@ -1675,6 +1675,7 @@ int CPU::ExecuteNextInstruction()
                 // These two need to be treated as unsigned so they keep their full value
                 int32_t sp = registers.shorts[SP];
                 int32_t hl = registers.shorts[HL];
+
                 // this needs to be signed
                 int8_t r = mmu->ReadFromAddress(registers.shorts[PC] + 1);
 
@@ -1683,15 +1684,24 @@ int CPU::ExecuteNextInstruction()
                 {
                     registers.bytes[F] |= HalfCarryFlag;
                 }
+                else
+                {
+                    registers.bytes[F] &= ~HalfCarryFlag;
+                }
 
                 
                 hl = sp + r;
+                uint16_t byteHL = (sp & 0xff) + (r & 0xFF);
 
                 // check full carry flag
-                // TODO is this correct?? Shouldn't I be checking 16-bit carry?
-                if (hl & 0x0100)
+                // TODO something wrong here
+                if (byteHL & 0x0100)
                 {
                     registers.bytes[F] |= CarryFlag;
+                }
+                else
+                {
+                    registers.bytes[F] &= ~CarryFlag;
                 }
                 registers.shorts[HL] = (uint16_t)hl;
 
@@ -1773,10 +1783,14 @@ int CPU::ExecuteNextInstruction()
             }
             case ADD_SP_r8:
             {
-                uint8_t r = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+                int8_t r = mmu->ReadFromAddress(registers.shorts[PC] + 1);
+                int16_t signedSP = registers.shorts[SP];
                 uint8_t lowerSP = (uint8_t)(registers.shorts[SP] & 0x00FF);
-                // check half carry flag:
+                
+                // Immediate value is signed
 
+
+                // check half carry flag:
                 if ((((lowerSP & 0xf) + (r & 0xf)) & 0x10) == 0x10)
                 {
                     registers.bytes[F] |= HalfCarryFlag;
@@ -1787,13 +1801,8 @@ int CPU::ExecuteNextInstruction()
                 }
 
                 // check full carry flag
-
-                // Figure out proper carry rules for this damn instruction
-
-
-                uint16_t result = registers.shorts[SP] + (uint32_t)r;
-                
-                if ((result & 0x0100) && !(registers.shorts[SP] & 0x0100))
+                uint16_t byte_result = (uint16_t)(lowerSP) + (uint8_t)r;
+                if ((byte_result & 0x0100))
                 {
                     registers.bytes[F] |= CarryFlag;
                 }
@@ -1801,17 +1810,13 @@ int CPU::ExecuteNextInstruction()
                 {
                     registers.bytes[F] &= ~CarryFlag;
                 }
-                registers.shorts[SP] = result;
 
-                // check zero:
-                if (registers.shorts[SP] == 0)
-                {
-                    registers.bytes[F] |= ZeroFlag;
-                }
-                else
-                {
-                    registers.bytes[F] &= ~ZeroFlag;
-                }
+                // Perform calculation on signed integers
+                signedSP = signedSP + r;
+                registers.shorts[SP] = (uint16_t) signedSP;
+
+                // reset zero flag
+                registers.bytes[F] &= ~ZeroFlag;
 
                 // Reset subtraction flag
                 registers.bytes[F] &= ~AddSubFlag;
@@ -2078,7 +2083,7 @@ int CPU::ExecuteNextInstruction()
 
     if (mCycles <= 0)
     {
-        static int q_useless = 1;
+        oldPC *= 1;
     }
 
     return mCycles;
