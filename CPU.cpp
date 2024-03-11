@@ -1619,6 +1619,8 @@ int CPU::ExecuteNextInstruction()
             }
             case LOAD_A_a16:
             {
+                // should address be the other way around???
+
                 uint16_t address = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
                 registers.shorts[PC] += 2;
                 registers.bytes[A] = mmu->ReadFromAddress(address);
@@ -2163,6 +2165,11 @@ int CPU::ExecutePrefixInstruction(uint8_t instruction)
             }
             else
             {
+                if (registers.shorts[PC] == 0xDEF8 || registers.shorts[PC] == 0xDEFA)
+                {
+                    volatile int x = 0;
+                    registers.shorts[PC] += x;
+                }
                 uint8_t regIndex = GetRegisterFromPrefixIndex(reg);
                 registers.bytes[regIndex] |= 0x01 << bitNumber;
             }
@@ -2201,7 +2208,7 @@ int CPU::PerformPrefixedRotOperation(uint8_t operation, uint8_t regIndex, bool u
             // TODO is this arithmetic or logical shift?
             // Rotate left through carry
             uint8_t setCarry = 0;
-            uint8_t carryBit = (registers.bytes[F] & CarryFlag) << 3;
+            uint8_t carryBit = (registers.bytes[F] & CarryFlag)? 1 : 0;
             if (useHL)
             {
                 val = mmu->ReadFromAddress(registers.shorts[HL]);
@@ -2278,7 +2285,7 @@ int CPU::PerformPrefixedRotOperation(uint8_t operation, uint8_t regIndex, bool u
                 val = registers.bytes[regIndex];
                 setCarry = (val & MostSigBit) >> 3;
                 uint8_t msb = (val & MostSigBit) >> 7;
-                val = (val << 1);// | msb;
+                val = (val << 1) | msb;
                 registers.bytes[regIndex] = val;
             }
 
@@ -2298,8 +2305,9 @@ int CPU::PerformPrefixedRotOperation(uint8_t operation, uint8_t regIndex, bool u
             if (useHL)
             {
                 val = mmu->ReadFromAddress(registers.shorts[HL]);
-                setCarry = (val & LeastSigBit) << 4;
+                
                 uint8_t lsb = (val & LeastSigBit) << 7;
+                setCarry = lsb? CarryFlag : 0;
                 val = (val >> 1) | lsb;
                 mmu->WriteToAddress(registers.shorts[HL], val);
                 extra_mCycles = 2;
@@ -2308,8 +2316,9 @@ int CPU::PerformPrefixedRotOperation(uint8_t operation, uint8_t regIndex, bool u
             {
 
                 val = registers.bytes[regIndex];
-                setCarry = (val & MostSigBit) >> 3;
+                
                 uint8_t lsb = (val & LeastSigBit) << 7;
+                setCarry = lsb? CarryFlag : 0;
                 val = (val >> 1) | lsb;
                 registers.bytes[regIndex] = val;
             }
