@@ -543,7 +543,10 @@ inline void CPU::AddC8(uint8_t A, uint8_t B, uint8_t& C)
 inline void CPU::SubC8(uint8_t A, uint8_t B, uint8_t& C)
 {
     // check half carry flag:
-    if ((((A & 0xf) - (B & 0xf)) & 0x10) == 0x10)
+    // TODO half carry flag not correctly set. This is because I do not take into account the carry flag
+    // and need to render everything as signed??   
+    uint8_t carry = registers.bytes[F] & CarryFlag? 1 : 0;
+    if ((((A & 0xf) - (B & 0xf) - carry) & 0x10) == 0x10)
     {
         registers.bytes[F] |= HalfCarryFlag;
     }
@@ -553,10 +556,10 @@ inline void CPU::SubC8(uint8_t A, uint8_t B, uint8_t& C)
     }
 
     // check full carry flag
-    uint16_t r = (uint16_t)A - (uint16_t)B - (uint16_t)((registers.bytes[F] & CarryFlag) >> 4);
-    C = (uint8_t)r;
+    int8_t r = (int8_t)A - (int8_t)B - carry;
+    C = r;
 
-    if (r & 0x0100)
+    if (B + carry > A)
     {
         registers.bytes[F] |= CarryFlag;
     }
