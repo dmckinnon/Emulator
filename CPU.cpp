@@ -8,9 +8,7 @@
 #define DEBUG_OUT
 bool bePrinting = false;
 
-#define SKIP_BOOT_ROM
-
-
+//#define SKIP_BOOT_ROM
 //#define QUIT_AFTER_BOOT
 
 #define CLOCKSPEED 4194304 
@@ -89,6 +87,7 @@ void CPU::InitialiseRegisters()
     registers.shorts[DE] = 0x00C1;
     registers.shorts[HL] = 0x8403;
 
+#ifdef GAMEBOY_DOCTOR
     // for gameboy doctor
     registers.bytes[A] = 0x01;
     registers.bytes[F] = 0xB0;
@@ -98,7 +97,7 @@ void CPU::InitialiseRegisters()
     registers.bytes[E] = 0xD8;
     registers.bytes[H] = 0x01;
     registers.bytes[L] = 0x4D;
-
+#endif
 }
 
 void CPU::ExecuteCycles(int numMCycles)
@@ -259,10 +258,6 @@ void CPU::ExecuteCode()
         // basically force-restrict to 60fps
         // Signal entire display update
         // clock divider is getting reset every so often
-        //if (cycles % 69905 == 0)
-        {
-        //    SignalDisplayToUpdate();
-        }
 
         int cycleCounter = 0;
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -1935,6 +1930,10 @@ int CPU::ExecuteNextInstruction()
                 {
                     registers.bytes[F] |= ZeroFlag;
                 }
+                else
+                {
+                    registers.bytes[F] &= ~ZeroFlag;
+                }
                 registers.bytes[F] &= 0xDF;//~HalfCarryFlag;
 
                 // Put the updated value back into register A
@@ -2012,6 +2011,7 @@ int CPU::ExecuteNextInstruction()
 
 #endif
 
+#ifdef GAMEBOY_DOCTOR
     // Gameboy doctor printing
     uint16_t pc = oldPC;
     printf("A:%02x F:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x SP:%04x PC:%04x PCMEM:%02x,%02x,%02x,%02x\n",
@@ -2019,7 +2019,7 @@ int CPU::ExecuteNextInstruction()
         rogisters.bytes[D], rogisters.bytes[E], rogisters.bytes[H], rogisters.bytes[L], 
         rogisters.shorts[SP], pc,
         mmu->ReadFromAddress(pc), mmu->ReadFromAddress(pc+1), mmu->ReadFromAddress(pc+2), mmu->ReadFromAddress(pc+3));
-    
+ #endif   
 
 
     // Update PC if a jump instruction has not been executed
