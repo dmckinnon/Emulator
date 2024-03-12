@@ -740,14 +740,12 @@ int CPU::ExecuteNextInstruction()
     int mCycles = 1;
     int oldPC = registers.shorts[PC];
 
-    bool didReturn = false;
-
-    // break up the instruction
+    // Break up the instruction into constituent args
+    // This means we can have a tree of conditions instead of a flat switch
+    // and instructions are reached in log time instead of constant 256-jumps time
+    // using https://gb-archive.github.io/salvage/decoding_gbz80_opcodes/Decoding%20Gamboy%20Z80%20Opcodes.html#cb
     // most load instructions are 0b01xxxyyy
     // most arithmetic instructions are 0b10xxxyyy
-
-    //bool loadPrefix = (instruction >> PREFIX_SHIFT) == LOAD_PREFIX;
-    //bool arithPrefix = (instruction >> PREFIX_SHIFT) == ARITH_PREFIX;
     uint8_t prefix = instruction >> PREFIX_SHIFT; // x
     uint8_t arg1 = (instruction >> 3) & 0x07; // y
     uint8_t arg2 = instruction & 0x07; // z
@@ -962,10 +960,6 @@ int CPU::ExecuteNextInstruction()
         if (arg1 % 2 == 0)
         {
             uint16_t value = mmu->ReadFromAddress(registers.shorts[PC] + 1) | (mmu->ReadFromAddress(registers.shorts[PC] + 2) << 8);
-            //if (reg == BC && value == 0x1200)
-            //{
-            //    bePrinting = true;
-            //}
 
             // 16 bit load immediate
             registers.shorts[reg] = value;
@@ -1029,72 +1023,20 @@ int CPU::ExecuteNextInstruction()
     }
     else
     { 
-        
+        // Here are all the instructions which were just a lot more finicky to optimise into log-time conditions
+        // This can be done, but it was more difficult, and there are few enough of them now - and they are ordered
+        // - such that the overhead is ok
         switch (instruction)
         {
-            // Control
-            case NOP:
-            {
-                // NOP takes 1 M-cycle == 4 clock cycles
-                break;
-            }
-            case STOP:
-            {
-                // HALT EXECUTION
-                // hack for now
-                // print out memory from 0xA000 until null terminator
-                uint16_t address = 0xA000;
-                unsigned char c = mmu->ReadFromAddress(address);
-                //printf("End of test:\n");
-                //while (c != 0)
-                //{
-                //    printf("%c", c);
-                //    address ++;
-                //    c = mmu->ReadFromAddress(address);
-                //}
-                //printf("\n");
-
-                return -1;
-            }
-            case HALT:
-            {
-                if (interruptsAreEnabled)
-                {
-                    haltMode = true;
-                    haltReturnPC = registers.shorts[PC] + 1;
-                }
-                else
-                {
-                    uint8_t interruptEnable = mmu->ReadFromAddress(MMU::interruptEnableRegisterAddress);
-                    uint8_t interruptRequests = mmu->ReadFromAddress(MMU::interruptFlagRegisterAddress);
-
-                    uint8_t whichInterrupt = interruptEnable & interruptRequests;
-                    // if we had any interrupt, push PC onto stack, disable interrupts
-                    if (whichInterrupt == 0)
-                    {
-                        haltMode = true;
-                    }
-                    else
-                    {
-                        // if IF & IE is NOT 0, this is a no-op
-                    }
-                }
-
-
-                break;
-            }
+            // interrupts
             case DI:
             {
                 disableInterruptsNextCycle = true;
-                //bePrinting = true;
-                //mCycles += 1;
                 break;
             }
             case EI:
             {
                 enableInterruptsNextCycle = true;
-                //bePrinting = true;
-                //mCycles += 1;
                 break;
             }
 
@@ -1366,8 +1308,6 @@ int CPU::ExecuteNextInstruction()
             case RETURN:
             {
                 pcChanged = true;
-                didReturn = true;
-                
                 POP_PC_FROM_STACK
                 mCycles += 4;
                 break;
@@ -1375,9 +1315,6 @@ int CPU::ExecuteNextInstruction()
             case RETURN_I:
             {
                 pcChanged = true;
-
-                didReturn = true;
-
                 // Pop 2 bytes from stack and jump to that address
                 POP_PC_FROM_STACK
                 // Enable interrupts
@@ -1394,8 +1331,6 @@ int CPU::ExecuteNextInstruction()
                     pcChanged = true;
                     POP_PC_FROM_STACK
                     mCycles += 5;
-
-                    didReturn = true;
                 }
                 else
                 {
@@ -1412,8 +1347,6 @@ int CPU::ExecuteNextInstruction()
                     pcChanged = true;
                     POP_PC_FROM_STACK
                     mCycles += 5;
-
-                    didReturn = true;
                 }
                 else
                 {
@@ -1430,8 +1363,6 @@ int CPU::ExecuteNextInstruction()
                     pcChanged = true;
                     POP_PC_FROM_STACK
                     mCycles += 5;
-
-                    didReturn = true;
                 }
                 else
                 {
@@ -1448,8 +1379,6 @@ int CPU::ExecuteNextInstruction()
                     pcChanged = true;
                     POP_PC_FROM_STACK
                     mCycles += 5;
-
-                    didReturn = true;
                 }
                 else
                 {
@@ -1593,7 +1522,6 @@ int CPU::ExecuteNextInstruction()
                 break;
             }
 
-
             // Load and store with offset address
             case LOAD_Cv_A:
             {
@@ -1628,9 +1556,6 @@ int CPU::ExecuteNextInstruction()
                 break;
             }
 
-            // Load and store from HL pointer to A, incrementing or decrementing the pointer after the fact
-
-
             // Load and store from absolute 8 bit address offset by 0xFF00
             case LOAD_H_a8_A:
             {
@@ -1649,12 +1574,8 @@ int CPU::ExecuteNextInstruction()
                 break;
             }
 
-
-
             /////////////////////////
             // Stack instructions
-            // which are part of 16 bit load instructions
-
 
             // Load the stack pointer into the data pointed to by given address
             case LOAD_a16_SP:
@@ -1831,7 +1752,6 @@ int CPU::ExecuteNextInstruction()
                 break;
             }
 
-            /////////////////////////////////
             // Prefix'd instructions
             case PREFIX:
             {
@@ -1839,6 +1759,43 @@ int CPU::ExecuteNextInstruction()
                 registers.shorts[PC] ++;
                 instruction = mmu->ReadFromAddress(registers.shorts[PC]);
                 mCycles += ExecutePrefixInstruction(instruction);
+                break;
+            }
+
+            // Control
+            case NOP:
+            {
+                // NOP takes 1 M-cycle == 4 clock cycles
+                break;
+            }
+            case STOP:
+            {
+                // HALT EXECUTION
+                return -1;
+            }
+            case HALT:
+            {
+                if (interruptsAreEnabled)
+                {
+                    haltMode = true;
+                    haltReturnPC = registers.shorts[PC] + 1;
+                }
+                else
+                {
+                    uint8_t interruptEnable = mmu->ReadFromAddress(MMU::interruptEnableRegisterAddress);
+                    uint8_t interruptRequests = mmu->ReadFromAddress(MMU::interruptFlagRegisterAddress);
+
+                    uint8_t whichInterrupt = interruptEnable & interruptRequests;
+                    // if we had any interrupt, push PC onto stack, disable interrupts
+                    if (whichInterrupt == 0)
+                    {
+                        haltMode = true;
+                    }
+                    else
+                    {
+                        // if IF & IE is NOT 0, this is a no-op
+                    }
+                }
                 break;
             }
 
@@ -1926,7 +1883,7 @@ int CPU::ExecuteNextInstruction()
             
 
             /////////////////////////////
-            // 8 bit arithmetic and logic
+            // Misc. instructions
 
             // Set carry flag instruction
             case SCF:
@@ -2015,21 +1972,15 @@ int CPU::ExecuteNextInstruction()
             }
 
             
-            // Jumps / calls
+            // If things get here, there's been a bad jump or ret or something
             default:
                 printf("Bad opcode! Instruction: %x  at PC: %d\n", instruction, oldPC);
-                //std::cout << "Bad opcode!" << std::endl;
-                //exit(-1);
+                exit(-1);
         }
     }
 
 #ifdef DEBUG_OUT
 
-// Add a clause here to run until one of the RET functions has been hit
-    if (didReturn)
-    {
-        static int g_useless = 1;
-    }
 
     uint16_t programCounter = registers.shorts[PC];
     if (bePrinting)
@@ -2074,21 +2025,7 @@ int CPU::ExecuteNextInstruction()
     // Update PC if a jump instruction has not been executed
     if (!pcChanged)
     {
-        // TODO when this goes above ROM banks, need to manually switch out the next ROM bank and
-        // reset the PC to the start of the next ROM bank
         registers.shorts[PC] ++;
-    }
-
-
-    // Stop executing if program counter goes past ROM
-    if (registers.shorts[PC] >= MMU::cartridgeRomBankSwitchableOffset + MMU::cartridgeRomBankSwitchableSize)
-    {
-        //return -1;
-    }
-
-    if (mCycles <= 0)
-    {
-        oldPC *= 1;
     }
 
     return mCycles;
