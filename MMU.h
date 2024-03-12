@@ -32,10 +32,6 @@ public:
 
     inline uint8_t ReadFromAddress(uint16_t address)
     {
-        if (address == 0xFF44)
-        {
-            return 0x90;
-        }
         if (useSystemRom && address < cartridgeHeaderOffset)
         {
             return systemRom[address];
@@ -49,16 +45,9 @@ public:
          if (address == 0xFF02 && value == 0x81)
         {
             unsigned char v = ReadFromAddress(0xFF01);
-            //std::cout << v << std::flush;
+            std::cout << v << std::flush;
 
         }
-
-        
-
-
-        // Semaphore to allow only one writer to memory at a time
-        //writeSemaphore.acquire();
-        //const std::lock_guard<std::mutex> lock(oamMutex);
 
         // Writing to the ROM is interpreted as a ROM/RAM bank switch
         // so we handle this. The logic is intricate.
@@ -96,12 +85,10 @@ public:
         {
             memory[address] = value;
             DoDMATransfer();
-            //writeSemaphore.release();
             return;
         }
 
         memory[address] = value;
-       // writeSemaphore.release();
     }
 
     // According to ChatGPT, a 16-bit write functions as two 8-bit writes
@@ -202,8 +189,6 @@ private:
     uint8_t systemRom[systemRomSize];
 
     std::shared_ptr<Rom> currentRom;
-
-    //std::counting_semaphore<1> writeSemaphore{1};
 
     int currentRomBank = 1;
     int mbc = 0;

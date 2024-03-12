@@ -51,7 +51,7 @@ void Debugger::DebuggerThread()
     while (runDebugger)
     {
         cv::imshow("Debugger", tiles);
-        char key = 0;//(char) cv::waitKey(1);   // explicit cast
+        char key = (char) cv::waitKey(1);   // explicit cast
         if (key == 's')
         {
             ShowTiles(0);

@@ -5,8 +5,8 @@
 #include <string.h>
 #include <thread>
 
-#define DEBUG_OUT
-bool bePrinting = false;
+//#define DEBUG_OUT
+bool bePrinting = true;
 
 //#define SKIP_BOOT_ROM
 //#define QUIT_AFTER_BOOT
@@ -353,7 +353,7 @@ void CPU::ExecuteCode()
         // Wait whatever is left of 16 ms
         auto millis = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000;
         auto remaining = 16 - millis/1000;
-        //std::this_thread::sleep_for(std::chrono::milliseconds(16));
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
 
     // end execution
