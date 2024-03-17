@@ -20,7 +20,6 @@ using namespace std::chrono;
 CPU::CPU()
 {
     clockCounter = 0;
-    clockDivider = 0;
     executing = false;
     InitialiseRegisters();
 }
@@ -29,7 +28,6 @@ CPU::CPU(MMU* mmu)
 {
     this->mmu = mmu;
     clockCounter = 0;
-    clockDivider = 0;
     executing = false;
     
     InitialiseRegisters();
@@ -102,23 +100,7 @@ void CPU::InitialiseRegisters()
 
 void CPU::ExecuteCycles(int numMCycles)
 {
-    clockDivider += 4*numMCycles;
-    mmu->WriteToDivRegister_Allowed(clockDivider >> 8);
-
-    // Every 456 cycles we signal display so it can draw another scanline
-    // This is independent of other timers
-    if (clockDivider % 456 == 0)
-    {
-        SignalDisplayForNextScanline();
-
-        // make CPU wait upon the display
-        // That is, CPU can only continue once the display has considered drawing
-        // this scan line
-        // Can do this with locks etc, or just have the entire draw call here
-
-        // Now this function should block this thread on drawing a whole scan line if appropriate
-
-    }
+    SignalDisplayForNextScanline(numMCycles);
 
 
     // Note: clock must be enabled to update clock

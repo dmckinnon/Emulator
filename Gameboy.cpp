@@ -37,9 +37,8 @@ Gameboy::Gameboy(
         },
         useDebugger)
 {
-    cpu.SetDisplaySignalFunc([this](){
-        //this->display.ClockSignalForScanline();
-        this->display.MaybeDrawOneScanLine();
+    cpu.SetDisplaySignalFunc([this](int cycles){
+        this->display.MaybeDrawOneScanLine(cycles);
     });
 
     cpu.SetDisplayUpdateFunc([this](){

@@ -24,6 +24,7 @@ Display::Display(
 {
     displaying = false;
     scanlineCycleCounter = 0;
+    m_clockDivider = 0;
 
 #ifdef RP2040
     mutex_init(&clockSignalMutex);
@@ -101,7 +102,7 @@ void Display::ClockSignalForScanline()
 #endif
 }
 
-void Display::MaybeDrawOneScanLine()
+void Display::MaybeDrawOneScanLine(int cycles)
 {
     UpdateLCDStatus();
 
@@ -111,6 +112,21 @@ void Display::MaybeDrawOneScanLine()
         return;
     }
 
+    // Every 456 cycles we signal display so it can draw another scanline
+    // This is independent of other timers
+    m_clockDivider += 4*cycles;
+    mmu->WriteToDivRegister_Allowed(m_clockDivider >> 8);
+    if (m_clockDivider >= 456)
+    {
+        m_clockDivider = 0;
+    }
+    else
+    {
+        // not ready yet to check the scanline
+        return;
+    }
+
+
     // Consider the next scanline
     uint8_t currentScanLine = mmu->ReadFromAddress(MMU::ScanLineCounterAddress);
     currentScanLine ++;
@@ -119,6 +135,7 @@ void Display::MaybeDrawOneScanLine()
     // confirm that currentScanline is valid
     if (currentScanLine < 0 || currentScanLine > 160)
     {
+        // need to throw an error 
         return;
     }
 
@@ -271,11 +288,15 @@ void Display::UpdateLCDStatus()
     if (!IsLCDEnabled())
     {
         // set mode to 1
-        currentStatus &= LCDModeMask;
+        currentStatus &= ~LCDModeMask;
         currentStatus |= VBlankMode;
+
+        // write out the status
+        mmu->WriteToAddress(MMU::LCDStatusAddress, currentStatus);
 
         // reset scanline counter. Writing to this address zeroes the value regardless of input
         mmu->WriteToAddress(MMU::ScanLineCounterAddress, (uint8_t)0x00);
+        m_clockDivider = 0;
 
         return;
     }
@@ -285,32 +306,37 @@ void Display::UpdateLCDStatus()
 
     // Check which mode we should be in
     uint8_t requestInterrupt = 0;
+    uint8_t newMode = 0;
     if (currentScanLine >= VisibleScanlines)
     {
         // Mode 1 VBlank
-        currentStatus &= LCDModeMask;
+        newMode = 1;
+        currentStatus &= ~LCDModeMask;
         currentStatus |= VBlankMode;
         requestInterrupt = currentStatus & VBlankInternalInterruptBit;
     }
     else
     {
-        if (scanlineCycleCounter < CyclesForMode2)
+        if (m_clockDivider < CyclesForMode2)
         {
             // Mode 2 Searching for Sprite Attributes
-            currentStatus &= LCDModeMask;
+            newMode = 2;
+            currentStatus &= ~LCDModeMask;
             currentStatus |= SearchingSpriteAttrsMode;
             requestInterrupt = currentStatus & SpriteInternalInterruptBit;
         }
-        else if (scanlineCycleCounter < CyclesForMode2 + CyclesForMode3)
+        else if (m_clockDivider < CyclesForMode2 + CyclesForMode3)
         {
             // Mode 3 Transfer Data to LCD
-            currentStatus &= LCDModeMask;
+            newMode = 3;
+            currentStatus &= ~LCDModeMask;
             currentStatus |= XferDataToLcdMode;
         }
         else
         {
             // Mode 0 HBlank
-            currentStatus &= LCDModeMask;
+            newMode = 0;
+            currentStatus &= ~LCDModeMask;
             currentStatus |= HBlankMode;
             requestInterrupt = currentStatus & HBlankInternalInterruptBit;
         }
@@ -318,7 +344,7 @@ void Display::UpdateLCDStatus()
 
     // if we are not in mode 3, but mode has changed,
     // request LCD stat interrupt if mode change interrupt bit is set
-    uint8_t newMode = currentStatus & LCDModeMask;
+    //uint8_t newMode = currentStatus & LCDModeMask;
     if (requestInterrupt && newMode != oldMode)
     {
         SetLCDStatInterrupt();
@@ -326,7 +352,7 @@ void Display::UpdateLCDStatus()
 
     // Check coincidence flag - is this the scanline we're looking for?
     uint8_t desiredScanline = mmu->ReadFromAddress(MMU::DesiredScanlineRegisterAddress);
-    if (currentScanLine = desiredScanline)
+    if (currentScanLine == desiredScanline)
     {
         // set the coincidence bit in status register
         // Fire interrupt if coincidence interrupt bit is set

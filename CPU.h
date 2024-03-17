@@ -12,7 +12,7 @@ public:
 
     void ExecuteCode();
 
-    void SetDisplaySignalFunc(std::function<void()> signalDisplayForNextScanline)
+    void SetDisplaySignalFunc(std::function<void(int)> signalDisplayForNextScanline)
     {
         SignalDisplayForNextScanline = signalDisplayForNextScanline;
     }
@@ -100,7 +100,7 @@ private:
     // The cycle counter works in M-cycles, not # of clock ticks
     // Each instruction is a multiple of 4 clock ticks == 1 m-cycle. 
     uint16_t clockCounter;
-    uint16_t clockDivider;
+    
     uint32_t cycles = 0;
 
     MMU* mmu;
@@ -118,7 +118,7 @@ private:
 
     void InitialiseRegisters();
 
-    std::function<void()> SignalDisplayForNextScanline;
+    std::function<void(int)> SignalDisplayForNextScanline;
 
     std::function<void()> SignalDisplayToUpdate;
 

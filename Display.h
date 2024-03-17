@@ -33,7 +33,7 @@ class ST7789;
     static const uint8_t VBlankMode = 0x01;
     static const uint8_t SearchingSpriteAttrsMode = 0x02;
     static const uint8_t XferDataToLcdMode = 0x03; 
-    static const uint8_t LCDModeMask = 0xFC;
+    static const uint8_t LCDModeMask = 0x03;//0xFC;
     static const uint8_t CoincidenceBit = 0x04;
 
     // LCD Stat internal interrupt vars
@@ -106,7 +106,7 @@ public:
 
     bool IsLCDEnabled();
 
-    void MaybeDrawOneScanLine();
+    void MaybeDrawOneScanLine(int cycles);
 
     void UpdateDisplay();
 
@@ -136,6 +136,8 @@ private:
     std::function<void()> SetVBlankInterrupt;
     std::function<void()> SetLCDStatInterrupt;
     std::function<void(uint8_t)> SetJoypadInterrupt;
+
+    uint16_t m_clockDivider;
 
     bool displaying;
     // main display thread

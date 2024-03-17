@@ -15,7 +15,7 @@ Debugger::Debugger(MMU* mmu)
     blockEveryFrame = false;
     moveToNextFrame = false;
 
-    cv::Mat img(48, 500, CV_8UC1);
+    cv::Mat img(64, 1024, CV_8UC1);
     tiles = img;
     tileAddress = 0;
 
@@ -41,8 +41,8 @@ void Debugger::ShowTiles(uint16_t address)
     tiles = cv::Scalar(255, 255, 255);
 
     RenderTiles(0x8000, 0);
-    RenderTiles(0x8800, 16);
-    RenderSprites(0x8000, 32);
+    RenderTiles(0x8800, 32);
+    RenderSprites(0x8000, 48);
     //RenderSprites(mmu->ReadFromAddress(MMU::LCDControlAddress), address, 0, 0, 32);
 }
 
