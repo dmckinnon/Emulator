@@ -8,7 +8,7 @@
 //#define DEBUG_OUT
 bool bePrinting = true;
 
-//#define SKIP_BOOT_ROM
+#define SKIP_BOOT_ROM
 //#define QUIT_AFTER_BOOT
 
 #define CLOCKSPEED 4194304 
@@ -85,7 +85,7 @@ void CPU::InitialiseRegisters()
     registers.shorts[DE] = 0x00C1;
     registers.shorts[HL] = 0x8403;
 
-#ifdef GAMEBOY_DOCTOR
+#ifdef SKIP_BOOT_ROM
     // for gameboy doctor
     registers.bytes[A] = 0x01;
     registers.bytes[F] = 0xB0;
@@ -101,6 +101,17 @@ void CPU::InitialiseRegisters()
 void CPU::ExecuteCycles(int numMCycles)
 {
     SignalDisplayForNextScanline(numMCycles);
+
+    
+    // Handle Divider Register
+    m_dividerRegister += cycles*4;
+    if (m_dividerRegister >= 256)
+    {
+        m_dividerRegister = m_dividerRegister % 256;
+        uint8_t divReg = mmu->ReadFromAddress(MMU::DIVRegisterAddress);
+        mmu->WriteToDivRegister_Allowed(divReg + 1);
+    }
+    
 
 
     // Note: clock must be enabled to update clock
@@ -226,7 +237,7 @@ void CPU::ExecuteCode()
     bool stillInSystemRom = true;
 
 #ifdef SKIP_BOOT_ROM
-//    stillInSystemRom = false;
+    stillInSystemRom = false;
 #endif
 
     if (!mmu)
@@ -329,13 +340,13 @@ void CPU::ExecuteCode()
         }
 
         // Time for a display update
-        SignalDisplayToUpdate();
-        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        //SignalDisplayToUpdate();
+        //std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
         // Wait whatever is left of 16 ms
-        auto millis = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000;
-        auto remaining = 16 - millis/1000;
-        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+        //auto millis = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000;
+        //auto remaining = 16 - millis/1000;
+        //std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
 
     // end execution

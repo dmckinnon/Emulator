@@ -137,7 +137,7 @@ private:
     std::function<void()> SetLCDStatInterrupt;
     std::function<void(uint8_t)> SetJoypadInterrupt;
 
-    uint16_t m_clockDivider;
+    uint16_t m_displayClock;
 
     bool displaying;
     // main display thread

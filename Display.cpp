@@ -24,7 +24,7 @@ Display::Display(
 {
     displaying = false;
     scanlineCycleCounter = 0;
-    m_clockDivider = 0;
+    m_displayClock = 0;
 
 #ifdef RP2040
     mutex_init(&clockSignalMutex);
@@ -104,7 +104,7 @@ void Display::ClockSignalForScanline()
 
 void Display::MaybeDrawOneScanLine(int cycles)
 {
-    UpdateLCDStatus();
+    //UpdateLCDStatus();
 
     if (!IsLCDEnabled())
     {
@@ -114,11 +114,152 @@ void Display::MaybeDrawOneScanLine(int cycles)
 
     // Every 456 cycles we signal display so it can draw another scanline
     // This is independent of other timers
-    m_clockDivider += 4*cycles;
-    mmu->WriteToDivRegister_Allowed(m_clockDivider >> 8);
-    if (m_clockDivider >= 456)
+    m_displayClock += 4*cycles;
+
+
+    // TODO add the timing/mode switching here???
+    // This comes from https://imrannazar.com/series/gameboy-emulation-in-javascript/gpu-timing
+    // Codeslinger apparently forgot this?
+
+    uint8_t status = mmu->ReadFromAddress(MMU::LCDStatusAddress);
+    uint8_t mode = status & LCDModeMask;
+    uint8_t currentScanLine = mmu->ReadFromAddress(MMU::ScanLineCounterAddress);
+    uint8_t requestInterrupt = 0;
+
+    switch (mode)
     {
-        m_clockDivider = 0;
+        case SearchingSpriteAttrsMode: // also called OAM mode
+        {
+            // OAM read mode, scanline active
+            // TODO what does it mean that scanline is active here? Read GPU timings
+            if (m_displayClock >= 80)
+            {
+                // switch to mode 3
+                m_displayClock = 0;
+                status &= ~LCDModeMask;
+                status |= XferDataToLcdMode;
+            }
+            break;
+        }
+        case XferDataToLcdMode: // also called VRAM read mode
+        {
+            // VRAM read mode, scanline active. Treat end of mode 3 as end of scanline
+            if (m_displayClock >= 172)
+            {
+                m_displayClock = 0;
+                // switch to mode 0
+                status &= ~LCDModeMask;
+                status |= HBlankMode;
+                requestInterrupt = status & HBlankInternalInterruptBit;
+
+                // they have here renderscan, which I assume is for the currrent line but I will check
+                // yeah looks like this is what they meant
+                // Draw the current line
+                DrawScanLine(currentScanLine);
+            }
+            break;
+        }
+        case HBlankMode:
+        {
+            // After last HBlank, push framebuffer to window (?)
+            if (m_displayClock >= 204)
+            {
+                m_displayClock = 0;
+
+                // line ++
+                // increment scanline?
+                currentScanLine ++;
+                mmu->WriteToScanlineCounter_Allowed(currentScanLine);
+
+                if (currentScanLine == VisibleScanlines - 1) // since currentScanLine is 0 indexed
+                {
+                    // enter vblank mode
+                    status &= ~LCDModeMask;
+                    status |= VBlankMode;
+
+                    requestInterrupt = status & VBlankInternalInterruptBit;
+
+                    // All lines have finished; write data to screen
+                    // TODO: check this timing works
+                    // On embedded, signal other thread. Wait here if other thread has not finished
+                    UpdateDisplay();
+                }
+                else
+                {
+                    // Enter OAM mode
+                    status &= ~LCDModeMask;
+                    status |= SearchingSpriteAttrsMode;
+                    requestInterrupt = status & SpriteInternalInterruptBit;
+                }
+            }
+            break;
+        }
+        case VBlankMode:
+        {
+            if (m_displayClock >= 456)
+            {
+                m_displayClock = 0;
+
+                // line ++
+                currentScanLine ++;
+                mmu->WriteToScanlineCounter_Allowed(currentScanLine);
+
+                if (currentScanLine >= MaxScanlines)
+                {
+                    // restart scanning modes
+                    currentScanLine = 0;
+                    mmu->WriteToScanlineCounter_Allowed(currentScanLine);
+
+                    // Enter OAM mode
+                    status &= ~LCDModeMask;
+                    status |= SearchingSpriteAttrsMode;
+                    requestInterrupt = status & SpriteInternalInterruptBit;
+                }
+            }
+        }
+    }
+
+    uint8_t newMode = status & LCDModeMask;
+
+    // if we are not in mode 3, but mode has changed,
+    // request LCD stat interrupt if mode change interrupt bit is set
+    //uint8_t newMode = currentStatus & LCDModeMask;
+    if (requestInterrupt && newMode != mode)
+    {
+        SetLCDStatInterrupt();
+    }
+
+    // Check coincidence flag - is this the scanline we're looking for?
+    uint8_t desiredScanline = mmu->ReadFromAddress(MMU::DesiredScanlineRegisterAddress);
+    if (currentScanLine == desiredScanline)
+    {
+        // set the coincidence bit in status register
+        // Fire interrupt if coincidence interrupt bit is set
+        status |= CoincidenceBit;
+        if (status & CoincidenceInternalInterruptBit)
+        {
+            SetLCDStatInterrupt();
+        }
+    }
+    else
+    {
+        // clear coincidence bit
+        status &= ~CoincidenceBit;
+    }
+
+    // write out new status
+    mmu->WriteToAddress(MMU::LCDStatusAddress, status);
+
+    return;
+
+
+    
+
+    // ignore all below this for now
+
+    if (m_displayClock >= 456)
+    {
+        m_displayClock = 0;
     }
     else
     {
@@ -128,7 +269,7 @@ void Display::MaybeDrawOneScanLine(int cycles)
 
 
     // Consider the next scanline
-    uint8_t currentScanLine = mmu->ReadFromAddress(MMU::ScanLineCounterAddress);
+   //uint8_t currentScanLine = mmu->ReadFromAddress(MMU::ScanLineCounterAddress);
     currentScanLine ++;
     mmu->WriteToScanlineCounter_Allowed(currentScanLine);
 
@@ -155,7 +296,7 @@ void Display::MaybeDrawOneScanLine(int cycles)
 
         //displayMutex.unlock();
     }
-    else
+    else if (currentScanLine == VisibleScanlines)
     {   // Are we in vblank? If so, set explicit VBLANK interrupt
         SetVBlankInterrupt();
         // during vblank, blit image to screen
@@ -169,7 +310,7 @@ void Display::MaybeDrawOneScanLine(int cycles)
 void Display::UpdateDisplay()
 {
     cv::imshow("GameBoy", frameBuffer);
-    cv::waitKey(15); 
+    cv::waitKey(16); 
 }
 
 void Display::FrameThreadProc()
@@ -296,7 +437,7 @@ void Display::UpdateLCDStatus()
 
         // reset scanline counter. Writing to this address zeroes the value regardless of input
         mmu->WriteToAddress(MMU::ScanLineCounterAddress, (uint8_t)0x00);
-        m_clockDivider = 0;
+        m_displayClock = 0;
 
         return;
     }
@@ -317,7 +458,7 @@ void Display::UpdateLCDStatus()
     }
     else
     {
-        if (m_clockDivider < CyclesForMode2)
+        if (m_displayClock < CyclesForMode2)
         {
             // Mode 2 Searching for Sprite Attributes
             newMode = 2;
@@ -325,7 +466,7 @@ void Display::UpdateLCDStatus()
             currentStatus |= SearchingSpriteAttrsMode;
             requestInterrupt = currentStatus & SpriteInternalInterruptBit;
         }
-        else if (m_clockDivider < CyclesForMode2 + CyclesForMode3)
+        else if (m_displayClock < CyclesForMode2 + CyclesForMode3)
         {
             // Mode 3 Transfer Data to LCD
             newMode = 3;

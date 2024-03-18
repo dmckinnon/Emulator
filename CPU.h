@@ -103,6 +103,8 @@ private:
     
     uint32_t cycles = 0;
 
+    uint16_t m_dividerRegister = 0;
+
     MMU* mmu;
 
     // EI, DI, and RETI change interrupts on the cycle after
