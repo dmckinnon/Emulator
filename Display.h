@@ -177,6 +177,7 @@ private:
     void UpdateLCDStatus();
     void DrawScanLine(uint8_t curScanline);
     void RenderTiles(uint8_t controlReg, uint8_t curScanline);
+    void RenderWindow(uint8_t controlReg, uint8_t curScanline);
     void RenderSprites(uint8_t controlReg, uint8_t curScanline);
     uint8_t GetColour(uint8_t colourNum, uint16_t paletteAddress);
     uint16_t GrayscaleToR5G6B5(uint8_t colour);

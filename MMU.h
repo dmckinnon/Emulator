@@ -49,6 +49,11 @@ public:
 
         }
 
+        if (address == interruptEnableRegisterAddress)
+        {
+            printf("Written to interrupt enable: %x\n", value);
+        }
+
         // Writing to the ROM is interpreted as a ROM/RAM bank switch
         // so we handle this. The logic is intricate.
         if (address < cartridgeRomBankSwitchableOffset + cartridgeRomBankSwitchableSize)
@@ -141,7 +146,7 @@ public:
     static const uint16_t TimerISRAddress = 0x0050;
     static const uint8_t serialInterruptBit = 0x8;
     static const uint16_t SerialISRAddress = 0x0058;
-    static const uint8_t joypadInterruptBit = 0x16;
+    static const uint8_t joypadInterruptBit = 0x10;
     static const uint16_t JoypadISRAddress = 0x0060;
 
     // Timer registers and bits

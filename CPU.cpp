@@ -5,8 +5,8 @@
 #include <string.h>
 #include <thread>
 
-//#define DEBUG_OUT
-bool bePrinting = true;
+#define DEBUG_OUT
+bool bePrinting = false;
 
 #define SKIP_BOOT_ROM
 //#define QUIT_AFTER_BOOT
@@ -100,7 +100,7 @@ void CPU::InitialiseRegisters()
 
 void CPU::ExecuteCycles(int numMCycles)
 {
-    SignalDisplayForNextScanline(numMCycles);
+   
 
     
     // Handle Divider Register
@@ -185,37 +185,39 @@ void CPU::CheckAndMaybeHandleInterrupts()
 
         // disable interrupts
         interruptsAreEnabled = 0;
+
+        // Set new PC based on interrupt
+        // and clear corresponding interrupt flag
+        if (whichInterrupt & MMU::vblankInterruptBit)
+        {
+            // Set PC to start of VBlank ISR
+            registers.shorts[PC] = MMU::VBlankISRAddress;   
+            interruptRequests &= ~MMU::vblankInterruptBit;
+        }
+        else if (whichInterrupt & MMU::lcdInterruptBit)
+        {
+            // Set PC to start of LCD Stat ISR
+            registers.shorts[PC] = MMU::LCDISRAddress;
+            interruptRequests &= ~MMU::lcdInterruptBit;
+        }
+        else if (whichInterrupt & MMU::timerInterruptBit)
+        {
+            registers.shorts[PC] = MMU::TimerISRAddress;
+            interruptRequests &= ~MMU::timerInterruptBit;
+        }
+        else if (whichInterrupt & MMU::serialInterruptBit)
+        {
+            registers.shorts[PC] = MMU::SerialISRAddress;
+            interruptRequests &= ~MMU::serialInterruptBit;
+        }
+        else if (whichInterrupt & MMU::joypadInterruptBit)
+        {
+            registers.shorts[PC] = MMU::JoypadISRAddress;
+            interruptRequests &= ~MMU::joypadInterruptBit;
+        }
     }
 
-    // Set new PC based on interrupt
-    // and clear corresponding interrupt flag
-    if (whichInterrupt & MMU::vblankInterruptBit)
-    {
-        // Set PC to start of VBlank ISR
-        registers.shorts[PC] = MMU::VBlankISRAddress;   
-        interruptRequests &= ~MMU::vblankInterruptBit;
-    }
-    else if (whichInterrupt & MMU::lcdInterruptBit)
-    {
-        // Set PC to start of LCD Stat ISR
-        registers.shorts[PC] = MMU::LCDISRAddress;
-        interruptRequests &= ~MMU::lcdInterruptBit;
-    }
-    else if (whichInterrupt & MMU::timerInterruptBit)
-    {
-        registers.shorts[PC] = MMU::TimerISRAddress;
-        interruptRequests &= ~MMU::timerInterruptBit;
-    }
-    else if (whichInterrupt & MMU::serialInterruptBit)
-    {
-        registers.shorts[PC] = MMU::SerialISRAddress;
-        interruptRequests &= ~MMU::serialInterruptBit;
-    }
-    else if (whichInterrupt & MMU::joypadInterruptBit)
-    {
-        registers.shorts[PC] = MMU::JoypadISRAddress;
-        interruptRequests &= ~MMU::joypadInterruptBit;
-    }
+    
 
     mmu->WriteToAddress(MMU::interruptFlagRegisterAddress, interruptRequests);
 
@@ -235,6 +237,9 @@ void CPU::ExecuteCode()
     // setup to avoid systemrom
     // need to set up the bloody display though
     bool stillInSystemRom = true;
+
+    // Does this need to be on by default?
+    interruptsAreEnabled = true;
 
 #ifdef SKIP_BOOT_ROM
     stillInSystemRom = false;
@@ -292,7 +297,7 @@ void CPU::ExecuteCode()
             }
 
             
-
+            SignalDisplayForNextScanline(cycles);
             
             // Spin the clock for the number of mCycles (= 4 regular cycles) the previous instruction took
             // timers to increment, timer interrupts to fire, etc. If an interrupt occurs,
@@ -716,6 +721,8 @@ int CPU::ExecuteNextInstruction()
     // get instruction at program counter
     uint8_t instruction = mmu->ReadFromAddress(registers.shorts[PC]);
     bool pcChanged = false;
+
+    bool didReturn = false;
 
     // make a copy of registers for printing
     Registers rogisters;
@@ -1295,6 +1302,8 @@ int CPU::ExecuteNextInstruction()
 
             case RETURN:
             {
+                didReturn = true;
+
                 pcChanged = true;
                 POP_PC_FROM_STACK
                 mCycles += 4;
@@ -1302,6 +1311,8 @@ int CPU::ExecuteNextInstruction()
             }
             case RETURN_I:
             {
+                didReturn = true;
+
                 pcChanged = true;
                 // Pop 2 bytes from stack and jump to that address
                 POP_PC_FROM_STACK
@@ -1316,6 +1327,7 @@ int CPU::ExecuteNextInstruction()
                 // Pop 2 bytes from stack and jump to that address if carry flag is set
                 if (registers.bytes[F] & CarryFlag)
                 {
+                    didReturn = true;
                     pcChanged = true;
                     POP_PC_FROM_STACK
                     mCycles += 5;
@@ -1332,6 +1344,7 @@ int CPU::ExecuteNextInstruction()
                 // Pop 2 bytes from stack and jump to that address if carry flag is not set
                 if (!(registers.bytes[F] & CarryFlag))
                 {
+                    didReturn = true;
                     pcChanged = true;
                     POP_PC_FROM_STACK
                     mCycles += 5;
@@ -1348,6 +1361,7 @@ int CPU::ExecuteNextInstruction()
                 // Pop 2 bytes from stack and jump to that address if zero flag is set
                 if (registers.bytes[F] & ZeroFlag)
                 {
+                    didReturn = true;
                     pcChanged = true;
                     POP_PC_FROM_STACK
                     mCycles += 5;
@@ -1364,6 +1378,7 @@ int CPU::ExecuteNextInstruction()
                 // Pop 2 bytes from stack and jump to that address if zero flag is not set
                 if (!(registers.bytes[F] & ZeroFlag))
                 {
+                    didReturn = true;
                     pcChanged = true;
                     POP_PC_FROM_STACK
                     mCycles += 5;
@@ -1973,6 +1988,10 @@ int CPU::ExecuteNextInstruction()
 
 #ifdef DEBUG_OUT
 
+    if (didReturn)
+    {
+        bePrinting = false;
+    }
 
     uint16_t programCounter = registers.shorts[PC];
     if (bePrinting)
@@ -1991,14 +2010,23 @@ int CPU::ExecuteNextInstruction()
         //printf("Timer register: %d\n", mmu->ReadFromAddress(MMU::TIMARegisterAddress));
 
         printf("HL value: %x\n", mmu->ReadFromAddress(registers.shorts[HL]));
+        printf("Immediate value: %x\n", mmu->ReadFromAddress(oldPC+1));
 
         // top 4 values of stack
         static uint16_t topOfStack = 0xdff7;
-        printf("Stack: \n%x: %x%x\n%x: %x%x\n%x: %x%x\n%x: %x%x\n", 
-            topOfStack-1, mmu->ReadFromAddress(topOfStack-1), mmu->ReadFromAddress(topOfStack-2),
-            topOfStack-3, mmu->ReadFromAddress(topOfStack-3), mmu->ReadFromAddress(topOfStack-4),
-            topOfStack-5, mmu->ReadFromAddress(topOfStack-5), mmu->ReadFromAddress(topOfStack-6),
-            topOfStack-7, mmu->ReadFromAddress(topOfStack-7), mmu->ReadFromAddress(topOfStack-8));
+        //printf("Stack: \n%x: %x%x\n%x: %x%x\n%x: %x%x\n%x: %x%x\n", 
+        //    topOfStack-1, mmu->ReadFromAddress(topOfStack-1), mmu->ReadFromAddress(topOfStack-2),
+        //    topOfStack-3, mmu->ReadFromAddress(topOfStack-3), mmu->ReadFromAddress(topOfStack-4),
+        //    topOfStack-5, mmu->ReadFromAddress(topOfStack-5), mmu->ReadFromAddress(topOfStack-6),
+        //    topOfStack-7, mmu->ReadFromAddress(topOfStack-7), mmu->ReadFromAddress(topOfStack-8));
+        bePrinting = true;
+
+        for (int i = 0; i < 8; ++i)
+        {
+            uint16_t addr = 0x0040+i;
+            printf("%x: %x\n", addr, mmu->ReadFromAddress(addr));
+        }
+
         bePrinting = true;
     }
 

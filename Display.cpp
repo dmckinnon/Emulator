@@ -135,7 +135,7 @@ void Display::MaybeDrawOneScanLine(int cycles)
             if (m_displayClock >= 80)
             {
                 // switch to mode 3
-                m_displayClock = 0;
+                m_displayClock = m_displayClock % 80;
                 status &= ~LCDModeMask;
                 status |= XferDataToLcdMode;
             }
@@ -146,7 +146,7 @@ void Display::MaybeDrawOneScanLine(int cycles)
             // VRAM read mode, scanline active. Treat end of mode 3 as end of scanline
             if (m_displayClock >= 172)
             {
-                m_displayClock = 0;
+                m_displayClock = m_displayClock % 172;
                 // switch to mode 0
                 status &= ~LCDModeMask;
                 status |= HBlankMode;
@@ -155,7 +155,9 @@ void Display::MaybeDrawOneScanLine(int cycles)
                 // they have here renderscan, which I assume is for the currrent line but I will check
                 // yeah looks like this is what they meant
                 // Draw the current line
-                DrawScanLine(currentScanLine);
+                //DrawScanLine(currentScanLine);
+
+                // Do some more stuff here?
             }
             break;
         }
@@ -164,25 +166,28 @@ void Display::MaybeDrawOneScanLine(int cycles)
             // After last HBlank, push framebuffer to window (?)
             if (m_displayClock >= 204)
             {
-                m_displayClock = 0;
+                m_displayClock = m_displayClock % 204;
 
                 // line ++
                 // increment scanline?
                 currentScanLine ++;
                 mmu->WriteToScanlineCounter_Allowed(currentScanLine);
 
-                if (currentScanLine == VisibleScanlines - 1) // since currentScanLine is 0 indexed
+                DrawScanLine(currentScanLine);
+
+                if (currentScanLine == 144) // since currentScanLine is 0 indexed
                 {
                     // enter vblank mode
                     status &= ~LCDModeMask;
                     status |= VBlankMode;
 
                     requestInterrupt = status & VBlankInternalInterruptBit;
+                    SetVBlankInterrupt();
 
                     // All lines have finished; write data to screen
                     // TODO: check this timing works
                     // On embedded, signal other thread. Wait here if other thread has not finished
-                    UpdateDisplay();
+                    //UpdateDisplay();
                 }
                 else
                 {
@@ -214,8 +219,11 @@ void Display::MaybeDrawOneScanLine(int cycles)
                     status &= ~LCDModeMask;
                     status |= SearchingSpriteAttrsMode;
                     requestInterrupt = status & SpriteInternalInterruptBit;
+
+                    UpdateDisplay();
                 }
             }
+            break;
         }
     }
 
@@ -253,7 +261,7 @@ void Display::MaybeDrawOneScanLine(int cycles)
     return;
 
 
-    
+    ///////////////////////////////////////////////
 
     // ignore all below this for now
 
@@ -309,6 +317,16 @@ void Display::MaybeDrawOneScanLine(int cycles)
 
 void Display::UpdateDisplay()
 {
+    uint8_t scrollX = mmu->ReadFromAddress(MMU::BGScrollXAddress);
+    uint8_t scrollY = mmu->ReadFromAddress(MMU::BGScrollYAddress);
+
+    // the minus 7 is just something in the gameboy
+    uint8_t windowX = mmu->ReadFromAddress(MMU::WindowXAddress) - 7;
+    uint8_t windowY = mmu->ReadFromAddress(MMU::WindowYAddress);
+
+    //printf("Background scroll y: %x\nWindow scroll y: %x\n\n", scrollY, windowY);
+
+
     cv::imshow("GameBoy", frameBuffer);
     cv::waitKey(16); 
 }
@@ -517,11 +535,31 @@ void Display::DrawScanLine(uint8_t curScanline)
 {
     uint8_t lcdControl = mmu->ReadFromAddress(MMU::LCDControlAddress);
 
-    // check if we can write tiles; if so, write
+    
+
+    // Write background
     if (lcdControl & BgEnabledBit)
     {
+        // Which tile layout to use?
+        
         RenderTiles(lcdControl, curScanline);
     }
+    else
+    {
+        // background is not enabled for this scanline. Draw white.
+        for (int i = 0; i < GAMEBOY_WIDTH; ++i)
+        {
+            frameBuffer.at<uchar>(cv::Point(i, curScanline)) = WHITE;
+        } 
+    }
+
+    // write the window
+    if (lcdControl & WindowEnableBit)
+    {
+        RenderWindow(lcdControl, curScanline);
+    }
+
+    
 
     // check if we can write sprites; if so, write
     if (lcdControl & SpritesEnabledBit)
@@ -534,27 +572,25 @@ void Display::RenderTiles(uint8_t controlReg, uint8_t curScanline)
 {
     // Get X and Y locations for window and BG scroll
     uint8_t scrollX = mmu->ReadFromAddress(MMU::BGScrollXAddress);
-    uint8_t scrollY = mmu->ReadFromAddress(MMU::BGScrollYAddress);
-
-    // the minus 7 is just something in the gameboy
-    uint8_t windowX = mmu->ReadFromAddress(MMU::WindowXAddress) - 7;
-    uint8_t windowY = mmu->ReadFromAddress(MMU::WindowYAddress);
-
-    // Check if window is enabled
-    bool drawWindow = false;
-    if (controlReg & WindowEnableBit)
-    {
-        // is current scanline within window y position
-        if (windowY <= curScanline)
-        {
-            drawWindow = true;
-        }
-    }
+    // Still something weird with scroll Y
+    uint8_t scrollY = 32;//mmu->ReadFromAddress(MMU::BGScrollYAddress);
 
     // Which region of memory are we grabbing window from 
     // 0x8000 or 0x8800 holds the tile data 
     // 0x9800 and 0x9C00 hold the tile layout
-    // TODO remove magic numbers
+
+    uint16_t backgroundMemory;
+    // check BG memory map
+    if (controlReg & BgTileMapBit)
+    {
+        backgroundMemory = UnsignedBgTileLayoutAddress;
+    }
+    else
+    {
+        backgroundMemory = SignedBgTileLayoutAddress;
+    }
+
+    // need to figure out if this bit is correct or not
     uint16_t windowTileDataAddress;
     bool unsig = true;
     if (controlReg & BgWindowTileSetBit)
@@ -569,32 +605,7 @@ void Display::RenderTiles(uint8_t controlReg, uint8_t curScanline)
     }
 
     // Which tile layout to use?
-    uint16_t backgroundMemory;
-    if (!drawWindow)
-    {
-        // check BG memory map
-        if (controlReg & BgTileMapBit)
-        {
-            backgroundMemory = UnsignedBgTileLayoutAddress;
-        }
-        else
-        {
-            backgroundMemory = SignedBgTileLayoutAddress;
-        }
-    }
-    else
-    {
-        // TODO are these correct?
-        // check window memory map
-        if (controlReg & WindowTileMapBit)
-        {
-            backgroundMemory = 0x9C00;
-        }
-        else
-        {
-            backgroundMemory = 0x9800;
-        }
-    }
+
     
     // Now that we know where in memory we draw from, we calculate from the y position
     // which tile we have, look this up in the layout, and then retrieve the line data
@@ -602,49 +613,162 @@ void Display::RenderTiles(uint8_t controlReg, uint8_t curScanline)
 
     // which of the 32 vertical tiles is the current scanline in?
     // not sure I understand this logic for window
-    uint8_t yPos = 0;
-    if (!drawWindow)
-    {
-        // Not drawing window. Check from the top of the background
-        // plus the current scanline
-        // eg. background starts at 16, scanline 3 = 19
-        yPos = scrollY + curScanline;
-    }
-    else
-    {
-        // Drawing window. Check from current scanline minus window
-        // start point, eg. scanline 3, window starts at 2, so check
-        // from y position 1?? Well, this would be tile 1? 
-        // This doesn't make sense to me 
-        yPos = curScanline - windowY;
-    }
+    uint8_t yPos = scrollY + curScanline;
 
     // Which vertical pixel row of the tile is the currentScanline in?
-    uint16_t tileRow = (yPos/8)*32;
+    uint16_t tileRow = (uint16_t)(yPos/8)*32; // >> 3 << 5
 
     // now draw the row 
     for (uint8_t i = 0; i < GAMEBOY_WIDTH; ++i)
     {
         // get the value for background offset
+        // This is &ed with 7 as well?? where does this come from?
         uint8_t bgX = i + scrollX;
 
-        if (drawWindow)
-        {
-            if (i >= windowX)
-            {
-                bgX = i - windowX;
-            }
-        }
 
         // find which tile of the 32 across this position falls in
-        uint16_t tileCol = bgX/8;
-        int16_t tileNum = 0;
+        uint16_t tileCol = bgX/8; // this is cinoop's lineoffset
+        int32_t tileNum = 0;
 
         // get tile id
+        // cinoop's mapoffset + lineoffset
+        // thing is, they build an index of the tiles separate to memory, whereas I'm trying to recreate things exactly
+        // they also have no consideration for the window? It is not handled????
+        // but this undoubtedly works ... 
         uint16_t tileAddress = backgroundMemory + tileRow + tileCol;
         if (unsig)
         {
-            tileNum = mmu->ReadFromAddress(tileAddress);
+            tileNum = (uint16_t)mmu->ReadFromAddress(tileAddress);
+        }
+        else
+        {   
+            tileNum = (int16_t)mmu->ReadFromAddress(tileAddress);
+        }
+
+        // Now get the tile from memory using id, and knowing whether we are
+        // in the signed map or the unsigned map
+        // POTENTIAL BUG HERE in calculationg things
+        // ALSO do we have tile attributes? Do tiles have attributes?
+        if (unsig && tileNum < 128)
+        {
+            tileNum += 256;
+        }
+        uint16_t tileLocation = windowTileDataAddress + tileNum*16;//(unsig? tileNum*16 : (tileNum+128)*16);
+
+        // Now get the correct vertical line in the tile so we know what to draw.
+        // Each line takes up two bytes of memory, to represent the colours
+        uint8_t line = (yPos % 8) * 2;
+        uint8_t byte1 = mmu->ReadFromAddress(tileLocation + line);
+        uint8_t byte2 = mmu->ReadFromAddress(tileLocation + line + 1);    
+
+        // Now separate out the individual colour for this pixel
+        // we need the xPos as a relative coordinate from 0-7 inside the tile
+        // and this gives us the bit number we need from the two bytes for colour
+        uint8_t bitNumber = 7 - (bgX % 8);
+        uint8_t bitPosition = 0x01 << bitNumber;
+        uint8_t colourNumber = byte2 & bitPosition? 0x2 : 0x0;
+        colourNumber |= (byte1 & bitPosition? 0x1 : 0x0);
+
+        // now we have colour number - lookup palette for actual colour
+        uint8_t grayscale = GetColour(colourNumber, MMU::BackgroundColourPaletteAddress);
+
+        // set pixel colour
+        // actual gameboy has RGB; for windows, just doing grayscale
+#ifdef RP2040
+        uint16_t newColour = GrayscaleToR5G6B5(grayscale);
+        canvas.drawPixel(i, curScanline, newColour);
+#else
+        frameBuffer.at<uchar>(cv::Point(i, curScanline)) = grayscale;
+#endif
+    }
+}
+
+void Display::RenderWindow(uint8_t controlReg, uint8_t curScanline)
+{
+    // Get X and Y locations for window and BG scroll
+    uint8_t scrollX = mmu->ReadFromAddress(MMU::BGScrollXAddress);
+    // Still something weird with scroll Y
+    uint8_t scrollY = 32;//mmu->ReadFromAddress(MMU::BGScrollYAddress);
+
+
+    uint8_t windowX = mmu->ReadFromAddress(MMU::WindowXAddress) - 7;
+    uint8_t windowY = mmu->ReadFromAddress(MMU::WindowYAddress);
+
+    if (curScanline > windowY || windowX > GAMEBOY_WIDTH || windowY > GAMEBOY_HEIGHT)
+    {
+        return;
+    }
+
+    // DO I need an internal window line counter??
+
+    // Which region of memory are we grabbing window from 
+    // 0x8000 or 0x8800 holds the tile data 
+    // 0x9800 and 0x9C00 hold the tile layout
+
+    uint16_t windowMemory;
+    // check window memory map
+    if (controlReg & WindowTileMapBit)
+    {
+        windowMemory = 0x9C00;
+    }
+    else
+    {
+        windowMemory = 0x9800;
+    }
+
+    // need to figure out if this bit is correct or not
+    uint16_t windowTileDataAddress;
+    bool unsig = true;
+    if (controlReg & BgWindowTileSetBit)
+    {
+        windowTileDataAddress = UnsignedBgTileDataAddress;
+    }
+    else
+    {
+        // this region uses signed bytes for tile ids
+        windowTileDataAddress = SignedBgTileDataAddress;
+        unsig = false;
+    }
+
+    // Which tile layout to use?
+
+    
+    // Now that we know where in memory we draw from, we calculate from the y position
+    // which tile we have, look this up in the layout, and then retrieve the line data
+    // for that tile
+
+    // which of the 32 vertical tiles is the current scanline in?
+    // not sure I understand this logic for window
+    uint8_t yPos = curScanline - windowY;
+
+    // Which vertical pixel row of the tile is the currentScanline in?
+    uint16_t tileRow = (uint16_t)(yPos/8)*32; // >> 3 << 5
+
+    // now draw the row 
+    for (uint8_t i = 0; i < GAMEBOY_WIDTH; ++i)
+    {
+        // get the value for background offset
+        // This is &ed with 7 as well?? where does this come from?
+        uint8_t bgX = i + windowX; // trying + not -
+        //if (i >= windowX)
+        ///{
+        //    bgX = i - windowX;
+        //}
+
+
+        // find which tile of the 32 across this position falls in
+        uint16_t tileCol = bgX/8; // this is cinoop's lineoffset
+        int32_t tileNum = 0;
+
+        // get tile id
+        // cinoop's mapoffset + lineoffset
+        // thing is, they build an index of the tiles separate to memory, whereas I'm trying to recreate things exactly
+        // they also have no consideration for the window? It is not handled????
+        // but this undoubtedly works ... 
+        uint16_t tileAddress = windowMemory + tileRow + tileCol;
+        if (unsig)
+        {
+            tileNum = (uint16_t)mmu->ReadFromAddress(tileAddress);
         }
         else
         {   
@@ -755,19 +879,19 @@ void Display::RenderSprites(uint8_t controlReg, uint8_t curScanline)
                         canvas.drawPixel(xLoc, curScanline, r5g6b5);
                     }
 #else
-                    if (frameBuffer.at<uchar>(xLoc, curScanline) == WHITE)
-                    {
-                        frameBuffer.at<uchar>(xLoc, curScanline) = grayscale;
-                    }
+                    frameBuffer.at<uchar>(xLoc, curScanline) = grayscale;
 #endif
-                }
-                else
+                } else if (frameBuffer.at<uchar>(xLoc, curScanline) == WHITE)
                 {
 #ifdef RP2040
                     canvas.drawPixel(xLoc, curScanline, r5g6b5);
 #else
                     frameBuffer.at<uchar>(xLoc, curScanline) = grayscale;
 #endif
+                }
+                else
+                {
+                    // do nothing
                 }
             }
         }
