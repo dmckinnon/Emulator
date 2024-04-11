@@ -9,8 +9,9 @@
 #include "Adafruit_GFX.h"
 
 // games, until we can get SD card working
+// need headers 
 //#include "Tetris.h"
-#include "SuperMario.h"
+//#include "SuperMario.h"
 //#include "LegendOfZeldaLinksAwakening.h"
 #else
 class ST7789;
@@ -64,6 +65,7 @@ int main()
 int main(int argc, char* argv[])
 { 
     auto parameters = ParseArgs(argc, argv);
+    bool useDebugger = parameters.useDebugger;
 #endif
 
     // Start display
@@ -108,7 +110,7 @@ int main(int argc, char* argv[])
 
     canvas.setCursor(0, 20);
     canvas.writeString("Loading game ROM: ");
-    canvas.writeString(SuperMarioName);
+    //canvas.writeString(SuperMarioName);
     lcd->WriteBuffer(canvas.getBuffer());
     canvas.setCursor(0, 30);
     // get size of game ROM and game name
@@ -122,8 +124,8 @@ int main(int argc, char* argv[])
     }
     else*/
     
-    gameRom->size = SuperMarioRomSize;
-    gameRom->bytes = (uint8_t*)SuperMarioRomBinary;
+    //gameRom->size = SuperMarioRomSize;
+    //gameRom->bytes = (uint8_t*)SuperMarioRomBinary;
     {
         canvas.writeString("Loaded game. Running ... ");
         lcd->WriteBuffer(canvas.getBuffer());
@@ -157,9 +159,10 @@ int main(int argc, char* argv[])
 #ifdef RP2040
         // destroy the original canvas and free up the memory
         canvas.~GFXcanvas16();
+        bool useDebugger = false;
 #endif
 
-        Gameboy g = Gameboy(systemRom, lcd, parameters.useDebugger);
+        Gameboy g = Gameboy(systemRom, lcd, useDebugger);
         g.LoadRom(gameRom);
 
 #ifdef RP2040

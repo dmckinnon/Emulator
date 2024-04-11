@@ -19,8 +19,7 @@ bool LoadRomFromFile(std::string filename, std::shared_ptr<Rom> rom)
         size_t length = romFile.tellg();
         romFile.seekg(0, std::ios::beg);
 
-        rom->size = length;
-        rom->SetSize(rom->size);
+        rom->SetSize(length);
         romFile.read((char*)rom->bytes, rom->size);
     }
     else

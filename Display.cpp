@@ -326,9 +326,14 @@ void Display::UpdateDisplay()
 
     //printf("Background scroll y: %x\nWindow scroll y: %x\n\n", scrollY, windowY);
 
-
+#ifndef RP2040
     cv::imshow("GameBoy", frameBuffer);
     cv::waitKey(16); 
+#else
+    // TODOOOO
+    // check with display writing thread 
+    // if it can draw, do it
+#endif
 }
 
 void Display::FrameThreadProc()
@@ -533,9 +538,7 @@ void Display::UpdateLCDStatus()
 
 void Display::DrawScanLine(uint8_t curScanline)
 {
-    uint8_t lcdControl = mmu->ReadFromAddress(MMU::LCDControlAddress);
-
-    
+    uint8_t lcdControl = mmu->ReadFromAddress(MMU::LCDControlAddress); 
 
     // Write background
     if (lcdControl & BgEnabledBit)
@@ -549,7 +552,12 @@ void Display::DrawScanLine(uint8_t curScanline)
         // background is not enabled for this scanline. Draw white.
         for (int i = 0; i < GAMEBOY_WIDTH; ++i)
         {
+#ifndef RP2040
             frameBuffer.at<uchar>(cv::Point(i, curScanline)) = WHITE;
+#else
+            uint16_t newColour = GrayscaleToR5G6B5(WHITE);
+            canvas.drawPixel(i, curScanline, newColour);
+#endif
         } 
     }
 
@@ -878,10 +886,13 @@ void Display::RenderSprites(uint8_t controlReg, uint8_t curScanline)
                     {
                         canvas.drawPixel(xLoc, curScanline, r5g6b5);
                     }
+        
+                } else if (canvas.getPixel(i, curScanline) == GrayscaleToR5G6B5(WHITE))
 #else
                     frameBuffer.at<uchar>(xLoc, curScanline) = grayscale;
-#endif
                 } else if (frameBuffer.at<uchar>(xLoc, curScanline) == WHITE)
+#endif
+                
                 {
 #ifdef RP2040
                     canvas.drawPixel(xLoc, curScanline, r5g6b5);

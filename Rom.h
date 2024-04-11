@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <cstdlib>
 
 // 1 Mb
 #define MAX_ROM_SIZE_BYTES (1024*1024)
@@ -12,7 +13,6 @@ struct Rom
     unsigned int size;
     uint8_t* bytes;
     
-
     Rom(uint32_t size)
     {
         bytes = (uint8_t *)malloc(size);
@@ -32,6 +32,7 @@ struct Rom
         }
     }
 
+
     void SetSize(uint32_t size)
     {
         if (bytes != nullptr)
@@ -39,6 +40,7 @@ struct Rom
             free(bytes);
         }
 
+        this->size = size;
         bytes = (uint8_t *)malloc(size);
     }
 };

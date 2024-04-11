@@ -285,17 +285,25 @@ void MMU::SwapOutRomBank(int bank)
         return;
     }
 
+#ifndef RP2040
     try {
-    // Swap out the switchable bank with the bank specified
-    currentRomBank = bank;
-    memcpy(&memory[cartridgeRomBankSwitchableOffset],
-           &currentRom->bytes[bank * cartridgeRomBankSwitchableSize],
-           cartridgeRomBankSwitchableSize);
+        // Swap out the switchable bank with the bank specified
+        currentRomBank = bank;
+        memcpy(&memory[cartridgeRomBankSwitchableOffset],
+            &currentRom->bytes[bank * cartridgeRomBankSwitchableSize],
+            cartridgeRomBankSwitchableSize);
     }
     catch (const std::exception& e)
     {
         std::cout << e.what(); // information from length_error printed
     }
+#else
+    // Swap out the switchable bank with the bank specified
+    currentRomBank = bank;
+    memcpy(&memory[cartridgeRomBankSwitchableOffset],
+        &currentRom->bytes[bank * cartridgeRomBankSwitchableSize],
+        cartridgeRomBankSwitchableSize);
+#endif
 }
 
 void MMU::SwitchRomRamMode(uint8_t value)

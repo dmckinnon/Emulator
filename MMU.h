@@ -42,17 +42,13 @@ public:
     inline void WriteToAddress(uint16_t address, uint8_t value)
     {
         // Debug with serial
+#ifndef RP2040
          if (address == 0xFF02 && value == 0x81)
         {
             unsigned char v = ReadFromAddress(0xFF01);
             std::cout << v << std::flush;
-
         }
-
-        if (address == interruptEnableRegisterAddress)
-        {
-            printf("Written to interrupt enable: %x\n", value);
-        }
+#endif
 
         // Writing to the ROM is interpreted as a ROM/RAM bank switch
         // so we handle this. The logic is intricate.
